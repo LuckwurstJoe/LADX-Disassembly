@@ -179,9 +179,9 @@ IndoorsAObjectsAttrmap_00::
 ._AB db  $03, $03, $03, $03
 ._AC db  $02, $02, $03, $03  ;; 23:42B0
 ._AD db  $00, $00, $00, $00
-._AE db  $00, $00, $00, $00  ;; 23:42B8
-._AF db  $00, $00, $00, $00
-._B0 db  $00, $00, $00, $00  ;; 23:42C0
+._AE db  $04, $04, $04, $04  ;; 23:42B8  ; LSD: same palette as the pit ($01)
+._AF db  $04, $04, $04, $04  ; LSD: same palette as the pit ($01)
+._B0 db  $04, $04, $04, $04  ;; 23:42C0  ; LSD: same palette as the pit ($01)
 ._B1 db  $04, $01, $04, $01
 ._B2 db  $01, $04, $01, $04  ;; 23:42C8
 ._B3 db  $05, $01, $05, $01
@@ -437,9 +437,9 @@ IndoorsAObjectsAttrmap_01::
 ._AB db  $03, $03, $03, $03
 ._AC db  $02, $02, $03, $03  ;; 23:46B0
 ._AD db  $00, $00, $00, $00
-._AE db  $03, $03, $03, $03  ;; 23:46B8
-._AF db  $03, $03, $03, $03
-._B0 db  $03, $03, $03, $03  ;; 23:46C0
+._AE db  $04, $04, $04, $04  ;; 23:46B8  ; LSD: same palette as the pit ($01)
+._AF db  $04, $04, $04, $04  ; LSD: same palette as the pit ($01)
+._B0 db  $04, $04, $04, $04  ;; 23:46C0  ; LSD: same palette as the pit ($01)
 ._B1 db  $04, $01, $04, $01
 ._B2 db  $01, $04, $01, $04  ;; 23:46C8
 ._B3 db  $05, $00, $05, $00
@@ -695,9 +695,9 @@ IndoorsAObjectsAttrmap_02::
 ._AB db  $03, $03, $03, $03
 ._AC db  $02, $02, $03, $03  ;; 23:4AB0
 ._AD db  $00, $00, $00, $00
-._AE db  $03, $03, $03, $03  ;; 23:4AB8
-._AF db  $03, $03, $03, $03
-._B0 db  $03, $03, $03, $03  ;; 23:4AC0
+._AE db  $04, $04, $04, $04  ;; 23:4AB8  ; LSD: same palette as the pit ($01)
+._AF db  $04, $04, $04, $04  ; LSD: same palette as the pit ($01)
+._B0 db  $04, $04, $04, $04  ;; 23:4AC0  ; LSD: same palette as the pit ($01)
 ._B1 db  $04, $01, $04, $01
 ._B2 db  $01, $04, $01, $04  ;; 23:4AC8
 ._B3 db  $05, $06, $05, $06
@@ -953,9 +953,9 @@ IndoorsAObjectsAttrmap_03::
 ._AB db  $03, $03, $03, $03
 ._AC db  $02, $02, $03, $03  ;; 23:4EB0
 ._AD db  $00, $00, $00, $00
-._AE db  $03, $03, $03, $03  ;; 23:4EB8
-._AF db  $03, $03, $03, $03
-._B0 db  $03, $03, $03, $03  ;; 23:4EC0
+._AE db  $04, $04, $04, $04  ;; 23:4EB8  ; LSD: same palette as the pit ($01)
+._AF db  $04, $04, $04, $04  ; LSD: same palette as the pit ($01)
+._B0 db  $04, $04, $04, $04  ;; 23:4EC0  ; LSD: same palette as the pit ($01)
 ._B1 db  $04, $01, $04, $01
 ._B2 db  $01, $04, $01, $04  ;; 23:4EC8
 ._B3 db  $05, $06, $05, $06
@@ -1211,9 +1211,9 @@ IndoorsAObjectsAttrmap_04::
 ._AB db  $03, $03, $03, $03
 ._AC db  $02, $02, $03, $03  ;; 23:52B0
 ._AD db  $04, $04, $04, $04
-._AE db  $03, $03, $03, $03  ;; 23:52B8
-._AF db  $03, $03, $03, $03
-._B0 db  $03, $03, $03, $03  ;; 23:52C0
+._AE db  $04, $04, $04, $04  ;; 23:52B8  ; LSD: same palette as the pit ($01)
+._AF db  $04, $04, $04, $04  ; LSD: same palette as the pit ($01)
+._B0 db  $04, $04, $04, $04  ;; 23:52C0  ; LSD: same palette as the pit ($01)
 ._B1 db  $04, $01, $04, $01
 ._B2 db  $01, $04, $01, $04  ;; 23:52C8
 ._B3 db  $05, $06, $05, $06
@@ -1727,9 +1727,9 @@ IndoorsAObjectsAttrmap_06::
 ._AB db  $03, $03, $03, $03
 ._AC db  $02, $02, $03, $03  ;; 23:5AB0
 ._AD db  $00, $00, $00, $00
-._AE db  $03, $03, $03, $03  ;; 23:5AB8
-._AF db  $03, $03, $03, $03
-._B0 db  $03, $03, $03, $03  ;; 23:5AC0
+._AE db  $04, $04, $04, $04  ;; 23:5AB8  ; LSD: same palette as the pit ($01)
+._AF db  $04, $04, $04, $04  ; LSD: same palette as the pit ($01)
+._B0 db  $04, $04, $04, $04  ;; 23:5AC0  ; LSD: same palette as the pit ($01)
 ._B1 db  $04, $01, $04, $01
 ._B2 db  $01, $04, $01, $04  ;; 23:5AC8
 ._B3 db  $05, $01, $05, $01
@@ -1985,9 +1985,9 @@ IndoorsAObjectsAttrmap_07::
 ._AB db  $03, $03, $03, $03
 ._AC db  $02, $02, $03, $03  ;; 23:5EB0
 ._AD db  $00, $00, $00, $00
-._AE db  $07, $07, $07, $07  ;; 23:5EB8
-._AF db  $07, $07, $07, $07
-._B0 db  $07, $07, $07, $07  ;; 23:5EC0
+._AE db  $04, $04, $04, $04  ;; 23:5EB8  ; LSD: same palette as the pit ($01)
+._AF db  $04, $04, $04, $04  ; LSD: same palette as the pit ($01)
+._B0 db  $04, $04, $04, $04  ;; 23:5EC0  ; LSD: same palette as the pit ($01)
 ._B1 db  $04, $01, $04, $01
 ._B2 db  $01, $04, $01, $04  ;; 23:5EC8
 ._B3 db  $05, $01, $05, $01
@@ -2243,9 +2243,9 @@ ColorDungeonBGAttributes::
 ._AB db  $03, $03, $03, $03
 ._AC db  $02, $02, $03, $03  ;; 23:62B0
 ._AD db  $00, $00, $00, $00
-._AE db  $01, $01, $01, $01  ;; 23:62B8
-._AF db  $01, $01, $01, $01
-._B0 db  $01, $01, $01, $01  ;; 23:62C0
+._AE db  $04, $04, $04, $04  ;; 23:62B8  ; LSD: same palette as the pit ($01)
+._AF db  $04, $04, $04, $04  ; LSD: same palette as the pit ($01)
+._B0 db  $04, $04, $04, $04  ;; 23:62C0  ; LSD: same palette as the pit ($01)
 ._B1 db  $04, $01, $04, $01
 ._B2 db  $01, $04, $01, $04  ;; 23:62C8
 ._B3 db  $05, $01, $05, $01
