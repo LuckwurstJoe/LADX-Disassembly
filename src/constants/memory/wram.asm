@@ -43,8 +43,8 @@ wLinkOAMBuffer::
 wDynamicOAMBuffer::
   ds 4 * 28 ; C030 - C09F
 
-; Unused
-ds $60 ; C0A0-C0FF
+wMessageBuffer: ; LSD
+  ds $60 ; C0A0-C0FF
 
 ; Table of the scrollX offset to add for each screen section being drawn
 wScrollXOffsetForSection::
@@ -1164,8 +1164,9 @@ wEntitiesHitboxFlagsTable::
 wEntitiesHealthTable::
   ds $10 ; C360 - C36F
 
-; Unused value, likely declared for entities but never actually used.
-wEntitiesUnusedTableA::
+; LSD, was: Unused value, likely declared for entities but never actually used.
+; LSD: Store the tile offset for the entity sprites
+wEntitiesSpriteOffsetTable::
   ds $10 ; C370 - C37F
 
 ; Direction of the entity.
@@ -1569,7 +1570,7 @@ wCE87::
 ; Used to avoid respawning enemies as soon as the player moves to
 ; the next room.
 wEntitiesClearedRooms::
-  ds $FF ; CF00 - CFFF
+  ds $100 ; CF00 - CFFF
 
 section "WRAM Bank1", wramx[$D000], bank[1]
 
@@ -3053,12 +3054,17 @@ wBGMapToLoad::
 ; - wRoomObjectsArea must be $10-bytes aligned (otherwise various copy loops break)
 ;
 ; First section is FF values padding…
+_randomMapDataFlags: ; LSD: Temporary storage for random map data during map generation ($40 bytes)
 wRoomObjectsArea::
   ds $11 ; D700 - D710
 
 ; Start of the actual map objects for the active room (ignoring the surrounding FF values)
 wRoomObjects::
-  ds $EF ; D711 - D7FF
+  ds $2F
+_randomMapDataID:  ; LSD: Temporary storage for random map data during map generation ($40 bytes)
+  ds $40
+_randomMapDataTmp:
+  ds $80
 
 ; World rooms status
 ; Each room is a byte combining ROOM_STATUS_* constants.
@@ -3129,16 +3135,31 @@ wHasBirdKey::
 wGoldenLeavesCount::
   ds 1 ; DB15
 
-; Beginning of dungeon item flags.
-; 5 bytes for each dungeon.
-; For each dungeon:
-; byte 0 = has map?,
-; byte 1 = has compass?
-; byte 2 = has stone slab?,
-; byte 3 = has boss key?,
-; byte 4 = small keys count
-wDungeonItemFlags::
-  ds $2D ; DB16 - DB42
+;LSD: Removed dungeon item flags (yay, free space! that gets erased when a new run is started!)
+_dungeonDepth:
+wDungeonDepth:
+  ds 1
+wCanSwordCharge:
+  ds 1
+wMagicRodAmount:
+  ds 1
+wMaxMagicRod:
+  ds 1
+; LSD: trade quest. Bits 0-2: carrying Yoshi doll / bananas / magnifying lens,
+; bits 4-6: that item was already traded in the village.
+_wLSDTradeItems:
+wLSDTradeItems:
+  ds 1
+; LSD: devil's deal. Bit 0/1: got the red/blue tunic from Vire, bit 2: got the
+; endless magic rod.
+_wLSDDevilDeals:
+wLSDDevilDeals:
+  ds 1
+; LSD: the floor on which the last devil's deal was made (one deal per floor)
+wLSDDevilFloor:
+  ds 1
+
+  ds $26
 
 ; TODO comment
 wPowerBraceletLevel::
@@ -3649,7 +3670,11 @@ wSmallKeysCount::
 
 ; Unlabeled
 wDBD1::
-  ds $2F ; DBD1 - DBFF
+  ds 1 ; DBD1
+
+  ;ds $2F ; DBD1 - DBFF
+
+SECTION "WRAMX_DC00", WRAMX[$DC00], BANK[1]
 
 ; TODO comment
 wFile1DeathCountHigh::
@@ -3723,6 +3748,7 @@ wDC0E::
 ;
 ; Other values are also possible, but their effects will depend on the currently active
 ; palettes.
+_wTunicType:
 wTunicType::
   ds 1 ; DC0F
 
@@ -3798,7 +3824,7 @@ wAnimatedScrollingTilesStorage::
 .tile3::
   ds $10 ; DCF0 - DCFF
 
-; Unused data?
+; Continuation of wDrawCommandVRAM1 data
   ds $D1 ; DD00 - DDD0
 
 ; Palette flags for copying palettes to hardware.

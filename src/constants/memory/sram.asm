@@ -12,6 +12,7 @@ assert SAVE_MAIN_SIZE == (wSaveSlotNames - wOverworldRoomStatus)
 
 section "SRAM", sram[$A000], bank[0]
 ; For some reason the first 256 bytes are skipped in the sram.
+sLSDIngameTimer:
     ds $100
 SaveGame1:
 .prefix:
@@ -51,3 +52,8 @@ SaveGame3:
 .dx3:
     ds SAVE_DX3_SIZE
 .end:
+
+sRandState:
+    ds 4
+sRandStateLocked:
+    ds 1

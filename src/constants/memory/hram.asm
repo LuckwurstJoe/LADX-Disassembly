@@ -14,8 +14,12 @@ section "HRAM", HRAM[$ff80]
 ; *                                                                 *
 ; *******************************************************************
 
-; Unused
-ds $10 ; FF80 - FF8F
+hLSDTemporary0:
+ ds 1
+hLSDTemporary1:
+ ds 1
+hLSDTemporary2:
+ ds $0E
 
 ; Beginning of the game-variables section of the HRAM
 hGameValuesSection::
@@ -507,11 +511,13 @@ hActiveEntityTilesOffset::
   ds 1 ; FFF5
 
 ; Room id on the active map
+_hMapRoom: ; LSD: Allow c access
 hMapRoom:: ; FFF6
   ds 1
 
 ; Id of the current indoor world map
 ; See MAP_* constants for values
+_hMapId: ; LSD: Allow c access
 hMapId::
   ds 1 ; FFF7
 
