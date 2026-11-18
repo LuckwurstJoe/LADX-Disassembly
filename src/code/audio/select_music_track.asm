@@ -133,6 +133,13 @@ SelectMusicTrackAfterTransition::
     add  hl, de                                   ;; 02:4192 $19
     ld   d, [hl]                                  ;; 02:4193 $56
 
+    ; LSD: the village floor (floor 5) plays the Mabe Village theme
+    ld   a, [wDungeonDepth]
+    cp   5
+    jr   nz, .notVillageFloor
+    ld   d, MUSIC_MABE_VILLAGE
+.notVillageFloor
+
     ; If hIsSideScrolling != 0 and a <= $0A…
     ldh  a, [hIsSideScrolling]                    ;; 02:4194 $F0 $F9
     and  a                                        ;; 02:4196 $A7
