@@ -237,6 +237,9 @@ LinkMotionDefault::
     ; sword animation state = SWORD_ANIMATION_STATE_NONE
     xor  a                                        ;; 02:42FE $AF
     ld   [wSwordAnimationState], a                ;; 02:42FF $EA $37 $C1
+    ld   a, [wCanSwordCharge]
+    and  a
+    ret  z
     ld   a, [wSwordCharge]                        ;; 02:4302 $FA $22 $C1
     cp   MAX_SWORD_CHARGE                         ;; 02:4305 $FE $28
     jr   z, .return                               ;; 02:4307 $28 $0C
@@ -3057,7 +3060,6 @@ TryOpenLockedDoor::
     ; Decrease the player small key count
     dec  a                                        ;; 02:53BE $3D
     ld   [wSmallKeysCount], a                     ;; 02:53BF $EA $D0 $DB
-    call SynchronizeDungeonsItemFlags_trampoline  ;; 02:53C2 $CD $02 $28
     call EnqueueDoorUnlockedSfx                   ;; 02:53C5 $CD $20 $54
 
     ; Mark the room as opened
@@ -3226,8 +3228,8 @@ DebugWarpMaps::
 
 label_002_5487:
     xor  a                                        ;; 02:5487 $AF
-    ld   [wIndoorARoomStatus], a                  ;; 02:5488 $EA $00 $D9
-    ld   [wIndoorBRoomStatus], a                  ;; 02:548B $EA $00 $DA
+    ;LSD: No idea why this was here... ld   [wIndoorARoomStatus], a                  ;; 02:5488 $EA $00 $D9
+    ;LSD: No idea why this was here... ld   [wIndoorBRoomStatus], a                  ;; 02:548B $EA $00 $DA
     ld   a, [wDialogCooldown]                     ;; 02:548E $FA $34 $C1
     and  a                                        ;; 02:5491 $A7
     jr   z, .decrementPhotoAlbumCooldown          ;; 02:5492 $28 $04
@@ -4841,6 +4843,7 @@ label_002_61E7:
 
 .dialogClosed
     call UpdateRupeesCount                        ;; 02:6203 $CD $09 $62
+    call LSD_UpdatePowerupTime
     jp   UpdateHealth                             ;; 02:6206 $C3 $17 $63
 
 ; Decrement the rupees count and play the associated sound effect
@@ -4898,10 +4901,11 @@ UpdateRupeesCount::
     adc  $00                                      ;; 02:6256 $CE $00
     daa                                           ;; 02:6258 $27
     ld   [wRupeeCountHigh], a                     ;; 02:6259 $EA $5D $DB
-    cp   $10                                      ;; 02:625C $FE $10
-    jr   c, .rupeesLessThan16                     ;; 02:625E $38 $11
+    ; LSD: wRupeeCountHigh holds two BCD digits now, so up to 9999 rupees.
+    ; Only clamp when the BCD addition overflowed past 9999.
+    jr   nc, .rupeesLessThan16
 
-    ld   a, $09                                   ;; 02:6260 $3E $09
+    ld   a, $99
     ld   [wRupeeCountHigh], a                     ;; 02:6262 $EA $5D $DB
     ld   a, $99                                   ;; 02:6265 $3E $99
     ld   [wRupeeCountLow], a                      ;; 02:6267 $EA $5E $DB
@@ -4973,16 +4977,27 @@ LoadRupeesDigits::
     ld   a, [wDrawCommandsSize]                   ;; 02:62CE $FA $00 $D6
     ld   e, a                                     ;; 02:62D1 $5F
     ld   d, $00                                   ;; 02:62D2 $16 $00
-    add  $06                                      ;; 02:62D4 $C6 $06
+    add  $07 ; LSD: 4 digits
     ld   [wDrawCommandsSize], a                   ;; 02:62D6 $EA $00 $D6
     ld   hl, wDrawCommand                         ;; 02:62D9 $21 $01 $D6
     add  hl, de                                   ;; 02:62DC $19
     ld   a, $9C                                   ;; 02:62DD $3E $9C
     ld   [hl+], a                                 ;; 02:62DF $22
-    ld   a, $2A                                   ;; 02:62E0 $3E $2A
+    ld   a, $29 ; LSD: start one tile further left, for the thousands digit
     ld   [hl+], a                                 ;; 02:62E2 $22
-    ld   a, $02                                   ;; 02:62E3 $3E $02
+    ld   a, $03 ; LSD: 4 tiles
     ld   [hl+], a                                 ;; 02:62E5 $22
+    ; LSD: thousands digit. Below 1000 keep the frame tile of the A slot there.
+    ld   a, [wRupeeCountHigh]
+    swap a
+    and  $0F
+    ld   e, $BF
+    jr   z, .noThousands
+    add  $B0
+    ld   e, a
+.noThousands
+    ld   a, e
+    ld   [hl+], a
     push hl                                       ;; 02:62E6 $E5
     ld   a, [wRupeeCountHigh]                     ;; 02:62E7 $FA $5D $DB
     and  $0F                                      ;; 02:62EA $E6 $0F
@@ -5048,7 +5063,7 @@ UpdateHealth:
     cp   $FF                                      ;; 02:6334 $FE $FF
     jr   nz, .savewTimeToNextLowHealthSFX         ;; 02:6336 $20 $07
     ; play low hearts sound
-    ld   a, LOW_HEALTH_SFX_PAUSE                  ;; 02:6338 $3E $30
+    ld   a, $80 ; LSD: slow low health beep (was LOW_HEALTH_SFX_PAUSE = $30)
     ld   hl, hWaveSfx                             ;; 02:633A $21 $F3 $FF
     ld   [hl], WAVE_SFX_LOW_HEARTS                ;; 02:633D $36 $04
 
@@ -5134,64 +5149,30 @@ UpdateHealth:
     ret                                           ;; 02:63A2 $C9
 
 .noHealth:
-    ; return if player has no medicine
-    ld   a, [wHasMedicine]                        ;; 02:63A3 $FA $0D $DB
-    and  a                                        ;; 02:63A6 $A7
-    jr   z, .return                               ;; 02:63A7 $28 $55
-    ; consume one medicine
-    dec  a                                        ;; 02:63A9 $3D
-    ld   [wHasMedicine], a                        ;; 02:63AA $EA $0D $DB
+    ; LSD: Check if we have a fairy in a bottle
+    ld   hl, wInventoryItems
+    ld   e, $0C
+.searchFairyLoop:
+    ld   a, [hl]
+    cp   INVENTORY_FAIRY_BOTTLE
+    jr   z, .fairyFound
+    inc  hl
+    dec  e
+    jr   nz, .searchFairyLoop
+    ret
+.fairyFound:
+    ld   [hl], 0
+
     ; add one heart to the $wHealth
     ld   a, ONE_HEART                             ;; 02:63AD $3E $08
     ld   [wHealth], a                             ;; 02:63AF $EA $5A $DB
-    ; add 16 hearts to the wAddHealthBuffer
+    ; add 5 hearts to the wAddHealthBuffer
     ld   a, [wAddHealthBuffer]                    ;; 02:63B2 $FA $93 $DB
-    add  ONE_HEART*16                             ;; 02:63B5 $C6 $80
+    add  ONE_HEART*5                              ;; 02:63B5 $C6 $80
     ld   [wAddHealthBuffer], a                    ;; 02:63B7 $EA $93 $DB
     ; make player invincible so no damage can be taken some time
     ld   a, DAMAGE_COOLDOWN_TIME                  ;; 02:63BA $3E $A0
     ld   [wInvincibilityCounter], a               ;; 02:63BC $EA $C7 $DB
-    ; TODO: comment what is going one here
-    ld   a, [wDrawCommandsSize]                   ;; 02:63BF $FA $00 $D6
-    ld   e, a                                     ;; 02:63C2 $5F
-    ld   d, $00                                   ;; 02:63C3 $16 $00
-    add  $04                                      ;; 02:63C5 $C6 $04
-    ld   [wDrawCommandsSize], a                   ;; 02:63C7 $EA $00 $D6
-    ld   hl, wDrawCommand                             ; POI: Updates (old) medicine counter on the subscreen
-    add  hl, de                                   ;; 02:63CD $19
-    ld   a, $9C                                   ;; 02:63CE $3E $9C
-    ld   [hl+], a                                 ;; 02:63D0 $22
-    ld   a, $93                                   ;; 02:63D1 $3E $93
-    ld   [hl+], a                                 ;; 02:63D3 $22
-    ld   a, $00                                   ;; 02:63D4 $3E $00
-    ld   [hl+], a                                 ;; 02:63D6 $22
-    ld   a, [wHasMedicine]                        ;; 02:63D7 $FA $0D $DB
-    add  $B0                                      ;; 02:63DA $C6 $B0
-    cp   $B0                                      ;; 02:63DC $FE $B0
-    jr   z, .jr_002_63E4                          ;; 02:63DE $28 $04
-
-    ld   [hl+], a                                 ;; 02:63E0 $22
-    xor  a                                        ;; 02:63E1 $AF
-    ld   [hl], a                                  ;; 02:63E2 $77
-    ret                                           ;; 02:63E3 $C9
-
-.jr_002_63E4
-    ld   a, $7F                                   ;; 02:63E4 $3E $7F
-    ld   [hl+], a                                 ;; 02:63E6 $22
-    ld   a, $9C                                   ;; 02:63E7 $3E $9C
-    ld   [hl+], a                                 ;; 02:63E9 $22
-    ld   a, $72                                   ;; 02:63EA $3E $72
-    ld   [hl+], a                                 ;; 02:63EC $22
-    ld   a, $C1                                   ;; 02:63ED $3E $C1
-    ld   [hl+], a                                 ;; 02:63EF $22
-    ld   a, $7F                                   ;; 02:63F0 $3E $7F
-    ld   [hl+], a                                 ;; 02:63F2 $22
-    xor  a                                        ;; 02:63F3 $AF
-    ld   [hl], a                                  ;; 02:63F4 $77
-    ld   a, [wDrawCommandsSize]                   ;; 02:63F5 $FA $00 $D6
-    add  $04                                      ;; 02:63F8 $C6 $04
-    ld   [wDrawCommandsSize], a                   ;; 02:63FA $EA $00 $D6
-    ret                                           ;; 02:63FD $C9
 
 .return:
     ret                                           ;; 02:63FE $C9
@@ -5288,7 +5269,7 @@ jr_002_6477:
     and  a                                        ;; 02:6478 $A7
 
 MinimapsTable::
-include "data/minimaps.asm"
+; include "data/minimaps.asm"
 include "code/minimap.asm"
 
 Data_002_68AB::
@@ -6909,7 +6890,6 @@ jr_002_7147:
     ld   [wDBAC], a                               ;; 02:714F $EA $AC $DB
     inc  a                                        ;; 02:7152 $3C
     ld   [wC188], a                               ;; 02:7153 $EA $88 $C1
-    call SynchronizeDungeonsItemFlags_trampoline  ;; 02:7156 $CD $02 $28
     call EnqueueDoorUnlockedSfx                   ;; 02:7159 $CD $20 $54
     jp   ApplyCollisionWithSolid                  ;; 02:715C $C3 $77 $72
 
@@ -7202,7 +7182,7 @@ jr_002_728E:
     ld   [wC5A6], a                               ;; 02:72F3 $EA $A6 $C5
 
     ld   a, e                                     ;; 02:72F6 $7B
-    call OpenDialogInTable0AndClearIncrement      ;; 02:72F7 $CD $FE $74
+    ; LSD: No nag message call OpenDialogInTable0AndClearIncrement      ;; 02:72F7 $CD $FE $74
 
 ; Check whether Link is currently dashing with
 ; the Pegasus Boots, in which case he should collide

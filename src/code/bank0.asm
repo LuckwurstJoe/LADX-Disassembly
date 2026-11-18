@@ -503,7 +503,7 @@ SpawnPhotographer_trampoline::
 
 ; Load Background map and attributes for photo
 LoadPhotoBgMap_trampoline::
-    callsb LoadPhotoBgMap                         ;; 00:0B02 $3E $3D $EA $00 $21 $CD $29 $40
+    ; callsb LoadPhotoBgMap                         ;; 00:0B02 $3E $3D $EA $00 $21 $CD $29 $40
     ret                                           ;; 00:0B0A $C9
 
 IF __PATCH_3__
@@ -707,6 +707,7 @@ Farcall_trampoline::
     ld   h, a                                     ;; 00:0BEA $67
     ld   a, [wFarcallAdressLow]                   ;; 00:0BEB $FA $03 $DE
     ld   l, a                                     ;; 00:0BEE $6F
+jumpHL:
     jp   hl                                       ;; 00:0BEF $E9
 
 UpdateLinkWalkingAnimation_trampoline::
@@ -800,7 +801,7 @@ ReadValueInDialogsBank::
 ; Inputs:
 ;   hl:  target address of the instrument tiles
 CopySirenInstrumentTiles::
-    ld   a, BANK(SirenInstrumentsTiles)           ;; 00:0C3A $3E $0C
+    ld   a, BANK(SirenInstrumentsTilesGBC)        ;; 00:0C3A $3E $0C
     ld   [rSelectROMBank], a                      ;; 00:0C3C $EA $00 $21
     ld   bc, $40                                  ;; 00:0C3F $01 $40 $00
     call CopyData                                 ;; 00:0C42 $CD $14 $29
@@ -1111,168 +1112,7 @@ SelectRoomTilesets::
     ld   a, TILESET_LOAD_WORLD                    ;; 00:0D8D $3E $01
     ldh  [hNeedsUpdatingBGTiles], a               ;; 00:0D8F $E0 $90
 .tilesetEnd
-
-    ; ------------------------------------------------------------
-    ;
-    ; Select the new OAM tileset
-    ;
-    ; First lookup the spritesheet group index for the room.
-    ; Then this group index references a 4-bytes value, where each
-    ; byte is a spritesheet.
-    ; ------------------------------------------------------------
-
-    ; [hMultiPurpose0] = 0
-    xor  a                                        ;; 00:0D91 $AF
-    ldh  [hMultiPurpose0], a                      ;; 00:0D92 $E0 $D7
-    ; de = [hMapRoom]
-    ldh  a, [hMapRoom]                            ;; 00:0D94 $F0 $F6
-    ld   e, a                                     ;; 00:0D96 $5F
-    ld   d, $00                                   ;; 00:0D97 $16 $00
-    ; Data starts at RoomSpritesheetGroupsTable
-    ld   hl, RoomSpritesheetGroupsTable           ;; 00:0D99 $21 $D3 $70
-    ; If indoors, add $100 to de
-    ld   a, [wIsIndoor]                           ;; 00:0D9C $FA $A5 $DB
-    ld   d, a                                     ;; 00:0D9F $57
-    ; If the map uses rooms in the indoors_b rooms group, add $100 to de again
-    ldh  a, [hMapId]                              ;; 00:0DA0 $F0 $F7
-    cp   MAP_INDOORS_B_END                        ;; 00:0DA2 $FE $1A
-    jr   nc, .indoorsBEnd                         ;; 00:0DA4 $30 $05
-    cp   MAP_INDOORS_B_START                      ;; 00:0DA6 $FE $06
-    jr   c, .indoorsBEnd                          ;; 00:0DA8 $38 $01
-    inc  d                                        ;; 00:0DAA $14
-.indoorsBEnd
-
-    ; Read the spritesheet group for the room.
-    ; e = RoomSpritesheetGroupsTable[de + roomId]
-    add  hl, de                                   ;; 00:0DAB $19
-    ld   e, [hl]                                  ;; 00:0DAC $5E
-
-    ; Special cases for the spritesheet group
-
-    ; If not the overworld…
-    ld   a, d                                     ;; 00:0DAD $7A
-    and  a                                        ;; 00:0DAE $A7
-    jr   z, .oamTilesetOnOverworld                ;; 00:0DAF $28 $10
-    ; …and inside the camera shop…
-    ldh  a, [hMapId]                              ;; 00:0DB1 $F0 $F7
-    cp   MAP_HOUSE                                ;; 00:0DB3 $FE $10
-    jr   nz, .spritesheetGroupDone                ;; 00:0DB5 $20 $24
-    ldh  a, [hMapRoom]                            ;; 00:0DB7 $F0 $F6
-    cp   ROOM_INDOOR_B_CAMERA_SHOP                ;; 00:0DB9 $FE $B5
-    jr   nz, .spritesheetGroupDone                ;; 00:0DBB $20 $1E
-    ; e = 0x3D
-    ld   e, $3D                                   ;; 00:0DBD $1E $3D
-    jr   .spritesheetGroupDone                    ;; 00:0DBF $18 $1A
-
-.oamTilesetOnOverworld
-    ld   a, e                                     ;; 00:0DC1 $7B
-    cp   $23                                      ;; 00:0DC2 $FE $23
-    jr   nz, .sirenRoomEnd                        ;; 00:0DC4 $20 $08
-    ld   a, [wOverworldRoomStatus + ROOM_OW_SIREN] ;; 00:0DC6 $FA $C9 $D8
-    and  OW_ROOM_STATUS_OWL_TALKED                ;; 00:0DC9 $E6 $20
-    jr   z, .sirenRoomEnd                         ;; 00:0DCB $28 $01
-    inc  e                                        ;; 00:0DCD $1C
-.sirenRoomEnd
-
-    ld   a, e                                     ;; 00:0DCE $7B
-    cp   $21                                      ;; 00:0DCF $FE $21
-    jr   nz, .spritesheetGroupDone                ;; 00:0DD1 $20 $08
-    ld   a, [wOverworldRoomStatus + ROOM_OW_WALRUS] ;; 00:0DD3 $FA $FD $D8
-    and  $20                                      ;; 00:0DD6 $E6 $20
-    jr   z, .spritesheetGroupDone                 ;; 00:0DD8 $28 $01
-    inc  e                                        ;; 00:0DDA $1C
-
-.spritesheetGroupDone
-
-    ; Compute the starting address of the 4 spritesheets ids
-
-    ; de = e * 4
-    ld   d, $00                                   ;; 00:0DDB $16 $00
-    sla  e                                        ;; 00:0DDD $CB $23
-    rl   d                                        ;; 00:0DDF $CB $12
-    sla  e                                        ;; 00:0DE1 $CB $23
-    rl   d                                        ;; 00:0DE3 $CB $12
-
-    ; On the Color Dungeon, spritesheets are loaded in a different way. Exit now.
-    ldh  a, [hMapId]                              ;; 00:0DE5 $F0 $F7
-    cp   MAP_COLOR_DUNGEON                        ;; 00:0DE7 $FE $FF
-    jr   nz, .useStandardSpritesheetsTables       ;; 00:0DE9 $20 $06
-    ld   a, TRUE                                  ;; 00:0DEB $3E $01
-    ldh  [hNeedsUpdatingEntityTilesA], a          ;; 00:0DED $E0 $91
-    jr   .return                                  ;; 00:0DEF $18 $40
-.useStandardSpritesheetsTables
-    ; Select which spritesheets table to use (overworld or indoors)
-    ld   hl, OverworldEntitySpritesheetsTable     ;; 00:0DF1 $21 $F3 $73
-    ld   a, [wIsIndoor]                           ;; 00:0DF4 $FA $A5 $DB
-    and  a                                        ;; 00:0DF7 $A7
-    jr   z, .spritesheetsTableEnd                 ;; 00:0DF8 $28 $03
-    ld   hl, IndoorEntitySpritesheetsTable        ;; 00:0DFA $21 $3B $76
-.spritesheetsTableEnd
-
-    ; Make hl point at the first of the 4-bytes spritesheets
-    ; hl = spritesheets-table[spritesheet-group]
-    add  hl, de                                   ;; 00:0DFD $19
-
-    ; ------------------------------------------------------------
-    ;
-    ; Schedule spritesheets copy
-    ;
-    ; ------------------------------------------------------------
-
-    ;
-    ; This loop iterates on the 4 spritesheet values for this room, and
-    ; schedule the loading for at most two of them.
-    ;
-    ; It looks for the currently loaded spritesheets, and request the ones
-    ; that are not loaded yet. (If more than two spritesheets are different,
-    ; only the last two ones are scheduled.)
-    ;
-
-    ld   d, $00                                   ;; 00:0DFE $16 $00
-    ld   bc, wLoadedEntitySpritesheets            ;; 00:0E00 $01 $93 $C1
-
-.loop
-    ld   e, [hl]                                  ;; 00:0E03 $5E
-    ld   a, [bc]                                  ;; 00:0E04 $0A
-    ; If the spritesheet is already loaded, skip to the next
-    cp   e                                        ;; 00:0E05 $BB
-    jr   z, .continue                             ;; 00:0E06 $28 $21
-    ; If the spritesheet is "KEEP CURRENT", skip to the next
-    ld   a, e                                     ;; 00:0E08 $7B
-    cp   $FF                                      ;; 00:0E09 $FE $FF
-    jr   z, .continue                             ;; 00:0E0B $28 $1C
-    ; Copy the spritesheet value to the wLoadedEntitySpritesheets slot
-    ld   [bc], a                                  ;; 00:0E0D $02
-
-    ; Request the first spritesheet using hNeedsUpdatingEntityTilesA,
-    ; and the second using wNeedsUpdatingEntityTilesB.
-    ldh  a, [hMultiPurpose0]                      ;; 00:0E0E $F0 $D7
-    and  a                                        ;; 00:0E10 $A7
-    jr   z, .useVariantA                          ;; 00:0E11 $28 $0B
-    ld   a, d                                     ;; 00:0E13 $7A
-    ld   [wEntityTilesSpriteslotIndexB], a        ;; 00:0E14 $EA $0D $C1
-    ld   a, TRUE                                  ;; 00:0E17 $3E $01
-    ld   [wNeedsUpdatingEntityTilesB], a          ;; 00:0E19 $EA $0E $C1
-    jr   .continue                                ;; 00:0E1C $18 $0B
-
-.useVariantA
-    inc  a                                        ;; 00:0E1E $3C
-    ldh  [hMultiPurpose0], a                      ;; 00:0E1F $E0 $D7
-    ld   a, d                                     ;; 00:0E21 $7A
-    ld   [wEntityTilesSpriteslotIndexA], a        ;; 00:0E22 $EA $97 $C1
-    ld   a, TRUE                                  ;; 00:0E25 $3E $01
-    ldh  [hNeedsUpdatingEntityTilesA], a          ;; 00:0E27 $E0 $91
-
-.continue
-    ; Loop until all four slots are done
-    inc  hl                                       ;; 00:0E29 $23
-    inc  bc                                       ;; 00:0E2A $03
-    inc  d                                        ;; 00:0E2B $14
-    ld   a, d                                     ;; 00:0E2C $7A
-    cp   $04                                      ;; 00:0E2D $FE $04
-    jr   nz, .loop                                ;; 00:0E2F $20 $D2
-
-.return
+    ; LSD: Removed all code related to loading spritesheets.
     jp   ReloadSavedBank                          ;; 00:0E31 $C3 $1D $08
 
 ExecuteGameplayHandler::
@@ -1440,11 +1280,11 @@ InventoryHandler::
     jpsw InventoryEntryPoint                      ;; 00:0F2D $3E $20 $CD $0C $08 $C3 $04 $59
 
 PhotoAlbumHandler::
-    callsw PhotoAlbumEntryPoint                   ;; 00:0F35 $3E $28 $CD $0C $08 $CD $00 $40
+    ; callsw PhotoAlbumEntryPoint                   ;; 00:0F35 $3E $28 $CD $0C $08 $CD $00 $40
     jp   returnFromGameplayHandler                ;; 00:0F3D $C3 $1A $10
 
 PhotoPictureHandler::
-    jpsw PhotosEntryPoint                         ;; 00:0F40 $3E $37 $CD $0C $08 $C3 $00 $40
+    ret ;jpsw PhotosEntryPoint                         ;; 00:0F40 $3E $37 $CD $0C $08 $C3 $00 $40
 
 ; World handler for GAMEPLAY_WORLD_INTERACTIVE (dispatched from WorldHandlerEntryPoint)
 WorldInteractiveHandler::
@@ -1646,7 +1486,7 @@ InitGotItemSequence::
     jr   nz, .jp_10DB                             ;; 00:1083 $20 $56
     ldh  a, [hPressedButtonsMask]                 ;; 00:1085 $F0 $CB
     and  J_SELECT                                 ;; 00:1087 $E6 $40
-    jr   z, .jp_10DB                              ;; 00:1089 $28 $50
+    jr   .jp_10DB ; LSD: Select never opens the map (was jr z) ;; 00:1089 $28 $50
     ld   a, [wD45F]                               ;; 00:108B $FA $5F $D4
     inc  a                                        ;; 00:108E $3C
     ld   [wD45F], a                               ;; 00:108F $EA $5F $D4
@@ -1778,31 +1618,27 @@ include "code/home/check_items_to_use.asm"
 ;   a    inventory item to use
 UseItem::
     ld   c, a                                     ;; 00:129C $4F
-    cp   INVENTORY_SWORD                          ;; 00:129D $FE $01
-    jp   z, UseSword                              ;; 00:129F $CA $28 $15
-    cp   INVENTORY_SHIELD                         ;; 00:12A2 $FE $04
-    jp   z, UseShield                             ;; 00:12A4 $CA $EE $12
-    cp   INVENTORY_BOMBS                          ;; 00:12A7 $FE $02
-    jp   z, PlaceBomb                             ;; 00:12A9 $CA $5A $13
-    cp   INVENTORY_POWER_BRACELET                 ;; 00:12AC $FE $03
-    jp   z, UsePowerBracelet                      ;; 00:12AE $CA $82 $13
-    cp   INVENTORY_BOW                            ;; 00:12B1 $FE $05
-    jp   z, ShootArrow                            ;; 00:12B3 $CA $BD $13
-    cp   INVENTORY_BOOMERANG                      ;; 00:12B6 $FE $0D
-    jp   z, UseBoomerang                          ;; 00:12B8 $CA $83 $13
-    cp   INVENTORY_HOOKSHOT                       ;; 00:12BB $FE $06
-    jp   z, UseHookshot                           ;; 00:12BD $CA $19 $13
-    cp   INVENTORY_ROCS_FEATHER                   ;; 00:12C0 $FE $0A
-    jp   z, UseRocsFeather                        ;; 00:12C2 $CA $CB $14
-    cp   INVENTORY_OCARINA                        ;; 00:12C5 $FE $09
-    jp   z, UseOcarina                            ;; 00:12C7 $CA $FC $41
-    cp   INVENTORY_MAGIC_POWDER                   ;; 00:12CA $FE $0C
-    jp   z, UseMagicPowder                        ;; 00:12CC $CA $8D $14
-    cp   INVENTORY_SHOVEL                         ;; 00:12CF $FE $0B
-    jp   z, UseShovel                             ;; 00:12D1 $CA $F8 $12
-    cp   INVENTORY_MAGIC_ROD                      ;; 00:12D4 $FE $07
-    jr   nz, .return                              ;; 00:12D6 $20 $15
-    ; fallthrough
+    rst  0
+    dw   .return
+    dw   UseSword
+    dw   PlaceBomb
+    dw   UsePowerBracelet
+    dw   UseShield
+    dw   ShootArrow
+    dw   UseHookshot
+    dw   .useMagicRod
+    dw   UsePegasusBoots
+    dw   UseOcarina
+    dw   UseRocsFeather
+    dw   UseShovel
+    dw   UseMagicPowder
+    dw   UseBoomerang
+    dw   UsePieceOfPower
+    dw   UsePotion1
+    dw   UsePotion2
+    dw   .return
+    dw   .return
+    dw   UseFairyBottle
 
 .useMagicRod
     ld   hl, wSwordAnimationState                 ;; 00:12D8 $21 $37 $C1
@@ -1813,6 +1649,8 @@ UseItem::
     ld   a, [wActiveProjectileCount]              ;; 00:12E1 $FA $4D $C1
     cp   $02                                      ;; 00:12E4 $FE $02
     jr   nc, .return                              ;; 00:12E6 $30 $05
+
+    ; LSD: the magic rod (devil's deal) has no ammo again, like in the original game
 
     ld   a, $0E | ATTACK_STEP_ITEM_MAGIC_ROD      ;; 00:12E8 $3E $8E
     ld   [wLinkAttackStepAnimationCountdown], a   ;; 00:12EA $EA $9B $C1
@@ -2855,54 +2693,12 @@ LinkMotionMapFadeOutHandler::
 
 .label_1909
     ld   c, a                                     ;; 00:1909 $4F
-    ld   a, $14                                   ;; 00:190A $3E $14
-    call SwitchBank                               ;; 00:190C $CD $0C $08
     push hl                                       ;; 00:190F $E5
-    ; This code tries to set de = 64*[hMapId].
-    ; However, it assumes that [hMapId] < $10, i.e. that the upper
-    ; nibble is 0. If [hMapId] >= $10, the result will be wrong.
-    ; Probably does not matter, since maps with id > $0A do not have
-    ; a map layout.
-    ldh  a, [hMapId]                              ;; 00:1910 $F0 $F7
-    swap a                                        ;; 00:1912 $CB $37
-    ld   e, a                                     ;; 00:1914 $5F
-    ld   d, $00                                   ;; 00:1915 $16 $00
-    sla  e                                        ;; 00:1917 $CB $23
-    rl   d                                        ;; 00:1919 $CB $12
-    sla  e                                        ;; 00:191B $CB $23
-    rl   d                                        ;; 00:191D $CB $12
-    ld   hl, MapLayout0                           ;; 00:191F $21 $20 $42
-    add  hl, de                                   ;; 00:1922 $19
-    ldh  a, [hMapId]                              ;; 00:1923 $F0 $F7
-    cp   MAP_COLOR_DUNGEON                        ;; 00:1925 $FE $FF
-    jr   nz, .colorDungeonEnd                     ;; 00:1927 $20 $05
-    ld   hl, MapLayout11                          ;; 00:1929 $21 $E0 $44
-    jr   .label_193C                              ;; 00:192C $18 $0E
-.colorDungeonEnd
 
-    cp   MAP_EAGLES_TOWER           ; Is this Eagle's Tower? ;; 00:192E $FE $06
-    jr   nz, .label_193C            ; If not, skip this... ;; 00:1930 $20 $0A
-    ld   a, [wHasInstrument7]       ; Otherwise, check if the pillars have all been dunked... ;; 00:1932 $FA $6B $DB
-    and  $04                                      ;; 00:1935 $E6 $04
-    jr   z, .label_193C             ; If not, skip this... ;; 00:1937 $28 $03
-    ld   hl, MapLayout12            ; Otherwise, swap to the alternate Eagle's Tower map (post-3F collapse) ;; 00:1939 $21 $20 $45
-
-.label_193C
-    ld   e, $00                                   ;; 00:193C $1E $00
-
-; Search the room with id c in the map layout...
-.loop_193E
-    ld   a, [hli]                                 ;; 00:193E $2A
-    cp   c                                        ;; 00:193F $B9
-    jr   z, .break_1948                           ;; 00:1940 $28 $06
-    inc  e                                        ;; 00:1942 $1C
-    ld   a, e                                     ;; 00:1943 $7B
-    cp   $40                                      ;; 00:1944 $FE $40
-    jr   nz, .loop_193E                           ;; 00:1946 $20 $F6
-.break_1948
+    callsb LSD_GenerateMap
 
 ; ...and save the position of the room in [wIndoorRoom].
-    ld   a, e                                     ;; 00:1948 $7B
+    ldh  a, [hMapRoom]
     ld   [wIndoorRoom], a                         ;; 00:1949 $EA $AE $DB
 
     ldh  a, [hFreeWarpDataAddress]                ;; 00:194C $F0 $E6
@@ -3176,7 +2972,7 @@ UpdateLinkWalkingAnimation::
 include "code/home/animated_tiles.asm"
 
 ReplaceMagicPowderTilesByToadstool::
-    ld   hl, LinkCharacter2Tiles + $10C0 ; toadstool tiles ;; 00:1E2B $21 $C0 $68
+    ld   hl, LinkCharacter2TilesGBC + $10C0 ; toadstool tiles ;; 00:1E2B $21 $C0 $68
     ld   de, $88E0                                ;; 00:1E2E $11 $E0 $88
     jr   ReplaceTilesPairAndDrawLinkSprite        ;; 00:1E31 $18 $74
 
@@ -3189,8 +2985,7 @@ ReplaceMagicPowderTilesByToadstool::
 ; Inputs:
 ;   wCreditsScratch0  index of the instrument to load (0-7)
 ReplaceDialogTilesByInstruments::
-    ld   a, BANK(Npc2Tiles)                       ;; 00:1E33 $3E $11
-    call AdjustBankNumberForGBC                   ;; 00:1E35 $CD $0B $0B
+    ld   a, BANK(Npc2TilesGBC)                    ;; 00:1E33 $3E $11
     ld   [rSelectROMBank], a                      ;; 00:1E38 $EA $00 $21
 
     ld   a, [wCreditsScratch0]                    ;; 00:1E3B $FA $00 $D0
@@ -3206,7 +3001,7 @@ ReplaceDialogTilesByInstruments::
     ld   hl, vTiles1 + $500                       ;; 00:1E4D $21 $00 $8D
     add  hl, de                                   ;; 00:1E50 $19
     push hl                                       ;; 00:1E51 $E5
-    ld   hl, Npc2Tiles + $1000                    ;; 00:1E52 $21 $00 $50
+    ld   hl, Npc2TilesGBC + $1000                 ;; 00:1E52 $21 $00 $50
 
 ReplaceEndCreditsTiles::
     add  hl, de                                   ;; 00:1E55 $19
@@ -3243,16 +3038,15 @@ ReplaceTiles_08::
     jr   ReplaceEndCreditsTiles                   ;; 00:1E8B $18 $C8
 
 ReplaceToadstoolTilesByMagicPowder::
-    ld   hl, InventoryEquipmentItemsTiles + $E0   ;; 00:1E8D $21 $E0 $48
+    ld   hl, InventoryEquipmentItemsTilesGBC + $E0 ;; 00:1E8D $21 $E0 $48
     ld   de, $88E0                                ;; 00:1E90 $11 $E0 $88
-    ld   a, BANK(InventoryEquipmentItemsTiles)    ;; 00:1E93 $3E $0C
-    call AdjustBankNumberForGBC                   ;; 00:1E95 $CD $0B $0B
+    ld   a, BANK(InventoryEquipmentItemsTilesGBC) ;; 00:1E93 $3E $0C
     ld   [rSelectROMBank], a                      ;; 00:1E98 $EA $00 $21
     ld   bc, TILE_SIZE * 2                        ;; 00:1E9B $01 $20 $00
     jp   CopyDataAndDrawLinkSprite                ;; 00:1E9E $C3 $3B $1F
 
 ReplaceSlimeKeyTilesByGoldenLeaf::
-    ld   hl, LinkCharacter2Tiles + $10E0          ;; 00:1EA1 $21 $E0 $68
+    ld   hl, LinkCharacter2TilesGBC + $10E0          ;; 00:1EA1 $21 $E0 $68
     ld   de, vTiles1 + $4A0                       ;; 00:1EA4 $11 $A0 $8C
     ; fallthrough to ReplaceTilesPairAndDrawLinkSprite
 
@@ -3263,7 +3057,7 @@ ReplaceSlimeKeyTilesByGoldenLeaf::
 ;   hl   tiles source address
 ;   de   tiles destination in VRAM
 ReplaceTilesPairAndDrawLinkSprite::
-    ld   a, BANK(LinkCharacter2Tiles)             ;; 00:1EA7 $3E $0C
+    ld   a, BANK(LinkCharacter2TilesGBC) - $20    ;; 00:1EA7 $3E $0C
     call AdjustBankNumberForGBC                   ;; 00:1EA9 $CD $0B $0B
     ld   [rSelectROMBank], a                      ;; 00:1EAC $EA $00 $21
     ld   bc, TILE_SIZE * $2                       ;; 00:1EAF $01 $20 $00
@@ -3291,15 +3085,15 @@ ReplaceTiles_04::
 ; Tiles for switch blocks during a transition
 ; Indexed by block kind.
 SwitchBlockTransitionTilesTable:: ;; 00:1ECD
-.kindA dw SwitchBlockTiles + $40 ; half-raised
-.kindB dw SwitchBlockTiles + $40 ; half-raised
+.kindA dw SwitchBlockTilesGBC + $40 ; half-raised
+.kindB dw SwitchBlockTilesGBC + $40 ; half-raised
 
 ; Tiles for switch blocks in state 0
 ; (blocks of kind A lowered, blocks of kind B raised).
 ;
 ; Indexed by block kind.
 SwitchBlockState0TilesTable:: ;; 00:1ED1
-.kindA dw SwitchBlockTiles ; lowered
+.kindA dw SwitchBlockTilesGBC ; lowered
 .kindB ; uses the first item below
 
 ; Tiles for switch blocks in state 1
@@ -3307,8 +3101,8 @@ SwitchBlockState0TilesTable:: ;; 00:1ED1
 ;
 ; Indexed by block kind.
 SwitchBlockState1TilesTable:: ;; 00:1ED3
-.kindA dw SwitchBlockTiles + $80 ; raised
-.kindB dw SwitchBlockTiles + $00 ; lowered
+.kindA dw SwitchBlockTilesGBC + $80 ; raised
+.kindB dw SwitchBlockTilesGBC + $00 ; lowered
 
 ; Modify switch block tiles during V-blank, depending on the blocks state
 ; and animation frame.
@@ -3326,7 +3120,7 @@ SwitchBlockState1TilesTable:: ;; 00:1ED3
 UpdateSwitchBlockTiles::
     ; Select graphics bank
     push af                                       ;; 00:1ED7 $F5
-    ld   a, BANK(SwitchBlockTiles)                ;; 00:1ED8 $3E $0C
+    ld   a, BANK(SwitchBlockTilesGBC) - $20       ;; 00:1ED8 $3E $0C
     call AdjustBankNumberForGBC                   ;; 00:1EDA $CD $0B $0B
     ld   [rSelectROMBank], a                      ;; 00:1EDD $EA $00 $21
     pop  af                                       ;; 00:1EE0 $F1
@@ -3414,7 +3208,7 @@ CopyDataAndDrawLinkSprite::
 .drawLinkSprite
     xor  a                                        ;; 00:1F3E $AF
     ldh  [hReplaceTiles], a                       ;; 00:1F3F $E0 $A5
-    ld   a, BANK(LinkCharacterTiles)              ;; 00:1F41 $3E $0C
+    ld   a, BANK(LinkCharacterTilesGBC)           ;; 00:1F41 $3E $0C
     ld   [rSelectROMBank], a                      ;; 00:1F43 $EA $00 $21
     jp   DrawLinkSpriteAndReturn                  ;; 00:1F46 $C3 $2E $1D
 
@@ -4266,9 +4060,7 @@ label_27F2::
 .skip
     jp   ReloadSavedBank                          ;; 00:27FF $C3 $1D $08
 
-SynchronizeDungeonsItemFlags_trampoline::
-    callsb SynchronizeDungeonsItemFlags           ;; 00:2802 $3E $01 $EA $00 $21 $CD $67 $5E
-    jp   ReloadSavedBank                          ;; 00:280A $C3 $1D $08
+;LSD: Removed SynchronizeDungeonsItemFlags, we only have current
 
 ; Return a random number in `a`
 GetRandomByte::
@@ -4569,10 +4361,9 @@ LoadTileset15::
     ld   bc, TILE_SIZE * $180                     ;; 00:2A74 $01 $00 $18
     call CopyData                                 ;; 00:2A77 $CD $14 $29
 
-    ld   a, BANK(Overworld1Tiles)                 ;; 00:2A7A $3E $0C
-    call AdjustBankNumberForGBC                   ;; 00:2A7C $CD $0B $0B
+    ld   a, BANK(Overworld1TilesGBC)              ;; 00:2A7A $3E $0C
     ld   [rSelectROMBank], a                      ;; 00:2A7F $EA $00 $21
-    ld   hl, Overworld1Tiles + $8E0 ; filler color ;; 00:2A82 $21 $E0 $57
+    ld   hl, Overworld1TilesGBC + $8E0 ; filler color ;; 00:2A82 $21 $E0 $57
     ld   de, vTiles2 + $7F0                       ;; 00:2A85 $11 $F0 $97
     ld   bc, TILE_SIZE                            ;; 00:2A88 $01 $10 $00
     call CopyData                                 ;; 00:2A8B $CD $14 $29
@@ -4593,10 +4384,9 @@ LoadTileset15::
 ; Copy tiles for the various Koholint views while the instruments are
 ; playing to tiles memory
 LoadCreditsKoholintViewsTiles::
-    ld   a, BANK(Overworld1Tiles)                 ;; 00:2AAE $3E $0C
-    call AdjustBankNumberForGBC                   ;; 00:2AB0 $CD $0B $0B
+    ld   a, BANK(Overworld1TilesGBC)              ;; 00:2AAE $3E $0C
     ld   [rSelectROMBank], a                      ;; 00:2AB3 $EA $00 $21
-    ld   hl, Overworld1Tiles + $100               ;; 00:2AB6 $21 $00 $50
+    ld   hl, Overworld1TilesGBC + $100            ;; 00:2AB6 $21 $00 $50
     ld   de, vTiles2                              ;; 00:2AB9 $11 $00 $90
     ld   bc, TILE_SIZE * $80                      ;; 00:2ABC $01 $00 $08
     call CopyData                                 ;; 00:2ABF $CD $14 $29
@@ -4671,9 +4461,9 @@ LoadCreditsRollTiles::
     call PlayAudioStep                            ;; 00:2B48 $CD $A4 $08
 
 IF __PATCH_1__
-    ld   a, BANK(CharacterVfxTiles)
+    ld   a, BANK(CharacterVfxTilesGBC)
     ld   [rSelectROMBank], a
-    ld   hl, CharacterVfxTiles + TILE_SIZE * $2
+    ld   hl, CharacterVfxTilesGBC + TILE_SIZE * $2
     ld   de, $8080
     ld   bc, TILE_SIZE * $2
     call CopyData
@@ -4776,25 +4566,25 @@ GetRoomStatusAddressForMapPosition_trampoline::
 ; Load the basic tiles (Link's character, items icons) to tile memory
 LoadBaseTiles::
     ; Select the tiles sheet bank ($0C on DMG, $2C on GBC)
-    ld   a, BANK(LinkCharacterTiles)              ;; 00:2BCF $3E $0C
-    call SwitchAdjustedBank                       ;; 00:2BD1 $CD $13 $08
+    ld   a, BANK(LinkCharacterTilesGBC)           ;; 00:2BCF $3E $0C
+    call SwitchBank
     ; Copy $400 bytes from the link's tile sheet to Tiles map 0
-    ld   hl, LinkCharacterTiles                   ;; 00:2BD4 $21 $00 $40
+    ld   hl, LinkCharacterTilesGBC                ;; 00:2BD4 $21 $00 $40
     ld   de, vTiles0                              ;; 00:2BD7 $11 $00 $80
     ld   bc, TILE_SIZE * $40                      ;; 00:2BDA $01 $00 $04
     call CopyData                                 ;; 00:2BDD $CD $14 $29
 
     ; Select the tiles sheet bank ($0C on DMG, $2C on GBC)
-    ld   a, BANK(InventoryEquipmentItemsTiles)    ;; 00:2BE0 $3E $0C
-    call SwitchAdjustedBank                       ;; 00:2BE2 $CD $13 $08
+    ld   a, BANK(InventoryEquipmentItemsTilesGBC) ;; 00:2BE0 $3E $0C
+    call SwitchBank
     ; Copy $1000 bytes from the items tile sheet to Tiles Map 1
-    ld   hl, InventoryEquipmentItemsTiles         ;; 00:2BE5 $21 $00 $48
+    ld   hl, InventoryEquipmentItemsTilesGBC      ;; 00:2BE5 $21 $00 $48
     ld   de, vTiles1                              ;; 00:2BE8 $11 $00 $88
     ld   bc, TILE_SIZE * $100                     ;; 00:2BEB $01 $00 $10
     call CopyData                                 ;; 00:2BEE $CD $14 $29
 
     ; Copy two tiles from the items tile sheet to a portion of Tiles Map 1
-    ld   hl, Items1Tiles + $3A0                   ;; 00:2BF1 $21 $A0 $47
+    ld   hl, Items1TilesGBC + $3A0                ;; 00:2BF1 $21 $A0 $47
     ld   de, vTiles1 + $600                       ;; 00:2BF4 $11 $00 $8E
     ld   bc, TILE_SIZE * $2                       ;; 00:2BF7 $01 $20 $00
     call CopyData                                 ;; 00:2BFA $CD $14 $29
@@ -4905,10 +4695,10 @@ LoadIndoorTiles::
     ld   bc, TILE_SIZE * $20                      ;; 00:2C94 $01 $00 $02
     call CopyData                                 ;; 00:2C97 $CD $14 $29
 
-    ld   a, BANK(Items1Tiles)                     ;; 00:2C9A $3E $0C
+    ld   a, BANK(Items1TilesGBC)                  ;; 00:2C9A $3E $0C
     call AdjustBankNumberForGBC                   ;; 00:2C9C $CD $0B $0B
     ld   [rSelectROMBank], a                      ;; 00:2C9F $EA $00 $21
-    ld   hl, Items1Tiles + $3C0                   ;; 00:2CA2 $21 $C0 $47
+    ld   hl, Items1TilesGBC + $3C0                ;; 00:2CA2 $21 $C0 $47
     ld   de, wAnimatedScrollingTilesStorage       ;; 00:2CA5 $11 $C0 $DC
     ld   bc, TILE_SIZE * $4                       ;; 00:2CA8 $01 $40 $00
     call CopyData                                 ;; 00:2CAB $CD $14 $29
@@ -4951,17 +4741,7 @@ LoadIndoorTiles::
     ld   [rSelectROMBank], a                      ;; 00:2CDD $EA $00 $21
     ld   hl, InventoryIndoorItemsTiles            ;; 00:2CE0 $21 $00 $7D
 
-    ; If indoor, but not in a dungeon…
-    ldh  a, [hMapId]                              ;; 00:2CE3 $F0 $F7
-    cp   MAP_COLOR_DUNGEON                        ;; 00:2CE5 $FE $FF
-    jr   z, .inventoryItemsEnd                    ;; 00:2CE7 $28 $0C
-    cp   MAP_CAVE_B                               ;; 00:2CE9 $FE $0A
-    jr   c, .inventoryItemsEnd                    ;; 00:2CEB $38 $08
-    ; …use the overworld inventory items (instead of the dungeon ones)
-    ld   a, BANK(InventoryOverworldItemsTiles)    ;; 00:2CED $3E $0C
-    call SwitchAdjustedBank                       ;; 00:2CEF $CD $13 $08
-    ld   hl, InventoryOverworldItemsTiles         ;; 00:2CF2 $21 $00 $4C
-.inventoryItemsEnd
+    ; LSD: Always load dungeon item tiles
 
     ld   de, vTiles1 + $400                       ;; 00:2CF5 $11 $00 $8C
     ld   bc, TILE_SIZE * $30                      ;; 00:2CF8 $01 $00 $03
@@ -4969,12 +4749,7 @@ LoadIndoorTiles::
 
 .patchInventoryTiles
 
-    ; Replace Magic Powder tile by Toadstool if needed
-    ld   a, [wHasToadstool]                       ;; 00:2CFE $FA $4B $DB
-    and  a                                        ;; 00:2D01 $A7
-    jr   z, .noToadstoolEnd                       ;; 00:2D02 $28 $03
-    call ReplaceMagicPowderTilesByToadstool       ;; 00:2D04 $CD $2B $1E
-.noToadstoolEnd
+    ; LSD: Never load toadstool graphics
 
     ; Replace Slime Key tile by Golden Leaf if needed
     ld   a, [wIsIndoor]                           ;; 00:2D07 $FA $A5 $DB
@@ -5011,9 +4786,9 @@ LoadBaseOverworldTiles::
     ; Load Overworld landscape
     ;
 
-    ld   a, BANK(OverworldLandscapeTiles)         ;; 00:2D2D $3E $0C
-    call SwitchAdjustedBank                       ;; 00:2D2F $CD $13 $08
-    ld   hl, OverworldLandscapeTiles              ;; 00:2D32 $21 $00 $52
+    ld   a, BANK(OverworldLandscapeTilesGBC)      ;; 00:2D2D $3E $0C
+    call SwitchBank                               ;; 00:2D2F $CD $13 $08
+    ld   hl, OverworldLandscapeTilesGBC           ;; 00:2D32 $21 $00 $52
     ld   de, vTiles2 + $200                       ;; 00:2D35 $11 $00 $92
     ld   bc, TILE_SIZE * $60                      ;; 00:2D38 $01 $00 $06
     call CopyData                                 ;; 00:2D3B $CD $14 $29
@@ -5022,7 +4797,7 @@ LoadBaseOverworldTiles::
     ; Load dungeon keys
     ;
 
-    ld   hl, InventoryOverworldItemsTiles         ;; 00:2D3E $21 $00 $4C
+    ld   hl, InventoryOverworldItemsTilesGBC      ;; 00:2D3E $21 $00 $4C
     ld   de, vTiles1 + $400                       ;; 00:2D41 $11 $00 $8C
     ld   bc, TILE_SIZE * $40                      ;; 00:2D44 $01 $00 $04
     call CopyData                                 ;; 00:2D47 $CD $14 $29
@@ -5038,16 +4813,15 @@ func_2D50::
     ldh  [hAnimatedTilesDataOffset], a            ;; 00:2D53 $E0 $A7
     call AnimateTiles.jumpTable                   ;; 00:2D55 $CD $D2 $1B
 
-    ld   a, BANK(InventoryEquipmentItemsTiles)    ;; 00:2D58 $3E $0C
-    call AdjustBankNumberForGBC                   ;; 00:2D5A $CD $0B $0B
+    ld   a, BANK(InventoryEquipmentItemsTilesGBC) ;; 00:2D58 $3E $0C
     ld   [rSelectROMBank], a                      ;; 00:2D5D $EA $00 $21
 
-    ld   hl, InventoryEquipmentItemsTiles         ;; 00:2D60 $21 $00 $48
+    ld   hl, InventoryEquipmentItemsTilesGBC      ;; 00:2D60 $21 $00 $48
     ld   de, vTiles1                              ;; 00:2D63 $11 $00 $88
     ld   bc, TILE_SIZE * $80                      ;; 00:2D66 $01 $00 $08
     call CopyData                                 ;; 00:2D69 $CD $14 $29
 
-    ld   hl, LinkCharacterTiles + $200            ;; 00:2D6C $21 $00 $42
+    ld   hl, LinkCharacterTilesGBC + $200         ;; 00:2D6C $21 $00 $42
     ld   de, vTiles0 + $200                       ;; 00:2D6F $11 $00 $82
     ld   bc, TILE_SIZE * $10                      ;; 00:2D72 $01 $00 $01
     call CopyData                                 ;; 00:2D75 $CD $14 $29
@@ -5122,16 +4896,16 @@ LoadTitleScreenTiles::
 ; Copy tiles for the World Map to tiles memory
 LoadWorldMapTiles::
     ; Load world map tiles
-    ld   a, BANK(WorldMapTiles)                   ;; 00:2DE9 $3E $0C
+    ld   a, BANK(WorldMapTilesGBC) - $20          ;; 00:2DE9 $3E $0C
     call SwitchAdjustedBank                       ;; 00:2DEB $CD $13 $08
-    ld   hl, WorldMapTiles                        ;; 00:2DEE $21 $00 $78
+    ld   hl, WorldMapTilesGBC                     ;; 00:2DEE $21 $00 $78
     ld   de, vTiles1 + $700                       ;; 00:2DF1 $11 $00 $8F
     ld   bc, TILE_SIZE * $80                      ;; 00:2DF4 $01 $00 $08
     call CopyData                                 ;; 00:2DF7 $CD $14 $29
 
     ; Load some overworld objects tiles (house, owl, etc),
     ; to display them when the cursor hovers a specific room.
-    ld   hl, Overworld1Tiles + $100               ;; 00:2DFA $21 $00 $50
+    ld   hl, Overworld1TilesGBC + $100            ;; 00:2DFA $21 $00 $50
     ld   de, vTiles0 + $200                       ;; 00:2DFD $11 $00 $82
     ld   bc, TILE_SIZE * $10                      ;; 00:2E00 $01 $00 $01
     jp   CopyData                                 ;; 00:2E03 $C3 $14 $29
@@ -5201,7 +4975,7 @@ LoadSaveMenuTiles::
 
 ; NPC tiles banks
 NpcTilesBankTable::
-    db   $00, BANK(Npc2Tiles), BANK(Npc1Tiles), BANK(Npc3Tiles) ;; 00:2E6F
+    db   $35, BANK(Npc2TilesGBC), BANK(Npc1TilesGBC), BANK(Npc3TilesGBC) ;; 00:2E6F
 
 ; For overworld or indoor rooms, load room-specific tiles.
 ;
@@ -5301,7 +5075,6 @@ LoadRoomSpecificTiles::
     ld   a, [hl]                                  ;; 00:2EEB $7E
     and  a                                        ;; 00:2EEC $A7
     jr   z, .bankAdjustmentEnd                    ;; 00:2EED $28 $03
-    call AdjustBankNumberForGBC                   ;; 00:2EEF $CD $0B $0B
 .bankAdjustmentEnd
 
     ; Do the actual copy to OAM tiles
@@ -5315,7 +5088,7 @@ LoadRoomSpecificTiles::
     ld   e, l                                     ;; 00:2EFE $5D
     ld   d, h                                     ;; 00:2EFF $54
     ; Source: NpcTilesDataStart + bc
-    ld   hl, NpcTilesDataStart                    ;; 00:2F00 $21 $00 $40
+    ld   hl, NpcTilesDataStartGBC                 ;; 00:2F00 $21 $00 $40
     add  hl, bc                                   ;; 00:2F03 $09
     ld   bc, TILE_SIZE * $10                      ;; 00:2F04 $01 $00 $01
     call CopyData                                 ;; 00:2F07 $CD $14 $29
@@ -5757,7 +5530,7 @@ ASSERT LOW(wRoomObjectsArea) & $0F == 0, "wRoomObjectsArea must be aligned on $1
     dec  c                                        ;; 00:30E9 $0D
     jr   nz, .loop                                ;; 00:30EA $20 $BD
 
-    jpsb UpdateMinimapEntranceArrowAndReturn      ;; 00:30EC $3E $01 $EA $00 $21 $C3 $EA $6D
+    ret
 
 ; Load room objects
 LoadRoom::
@@ -5858,6 +5631,9 @@ LoadRoom::
     ;
     ; Select the bank and address for the map pointers table
     ;
+    ;LSD: Added setting the SRAM bank for dynamic room data
+    ld   a, BANK(sDynamicRoomData)
+    ld   [rRAMB], a
 
     ; bc = hMapRoom
     ldh  a, [hMapRoom]                            ;; 00:316D $F0 $F6
@@ -5885,19 +5661,6 @@ LoadRoom::
     jp   .fetchRoomAddress                        ;; 00:318C $C3 $24 $32
 .colorDungeonEnd
 
-    ; If have the Magnifying Lens, load an alternate Goriya room (where the Goriya NPC is actually present)
-    cp   MAP_CAVE_WATER                           ;; 00:318F $FE $1F
-    jr   nz, .goriyaRoomEnd                       ;; 00:3191 $20 $13
-    ldh  a, [hMapRoom]                            ;; 00:3193 $F0 $F6
-    cp   ROOM_INDOOR_A_GORIYA                     ;; 00:3195 $FE $F5
-    jr   nz, .goriyaRoomEnd                       ;; 00:3197 $20 $0D
-    ld   a, [wTradeSequenceItem]                  ;; 00:3199 $FA $0E $DB
-    cp   TRADING_ITEM_MAGNIFYING_LENS             ;; 00:319C $FE $0E
-    jr   nz, .goriyaRoomEnd                       ;; 00:319E $20 $06
-    ld   bc, IndoorsAF5Alt                        ;; 00:31A0 $01 $55 $78
-    jp   .parseRoomHeader                         ;; 00:31A3 $C3 $3A $32
-.goriyaRoomEnd
-
     ; If the map is in between MAP_INDOORS_B_START and MAP_INDOORS_B_END…
     ld   hl, IndoorsARoomPointers                 ;; 00:31A6 $21 $00 $40
     ldh  a, [hMapId]                              ;; 00:31A9 $F0 $F7
@@ -5913,66 +5676,7 @@ LoadRoom::
     jr   .fetchRoomAddress                        ;; 00:31BD $18 $65
 
 .isIndoorEnd
-
-    ;
-    ; Swap some Overworld rooms with alternative layouts
-    ;
-
-    ldh  a, [hMapRoom]                            ;; 00:31BF $F0 $F6
-    cp   ROOM_OW_EAGLES_TOWER                     ;; 00:31C1 $FE $0E
-    jr   nz, .endEaglesTowerAlt                   ;; 00:31C3 $20 $0C
-    ld   a, [wOverworldRoomStatus + ROOM_OW_EAGLES_TOWER] ;; 00:31C5 $FA $0E $D8
-    and  OW_ROOM_STATUS_CHANGED                   ;; 00:31C8 $E6 $10
-    jr   z, .altRoomsEnd                          ;; 00:31CA $28 $55
-    ld   bc, Overworld0EAlt ; Eagle's Tower open  ;; 00:31CC $01 $EC $47
-    jr   .loadBankForOverworldRooms               ;; 00:31CF $18 $5E
-.endEaglesTowerAlt
-
-    cp   $8C                                      ;; 00:31D1 $FE $8C
-    jr   nz, .endSouthFaceShrineAlt               ;; 00:31D3 $20 $0C
-    ld   a, [wOverworldRoomStatus + $8C]          ;; 00:31D5 $FA $8C $D8
-    and  OW_ROOM_STATUS_CHANGED                   ;; 00:31D8 $E6 $10
-    jr   z, .altRoomsEnd                          ;; 00:31DA $28 $45
-    ld   bc, Overworld8CAlt ; South Face Shrine open ;; 00:31DC $01 $4E $43
-    jr   .loadBankForOverworldRooms               ;; 00:31DF $18 $4E
-.endSouthFaceShrineAlt
-
-    cp   $79                                      ;; 00:31E1 $FE $79
-    jr   nz, .endUpperTalTalHeightsAlt            ;; 00:31E3 $20 $0C
-    ld   a, [wOverworldRoomStatus + $79]          ;; 00:31E5 $FA $79 $D8
-    and  OW_ROOM_STATUS_CHANGED                   ;; 00:31E8 $E6 $10
-    jr   z, .altRoomsEnd                          ;; 00:31EA $28 $35
-    ld   bc, Overworld79Alt ; Kanalet Castle open ;; 00:31EC $01 $13 $65
-    jr   .loadBankForOverworldRooms               ;; 00:31EF $18 $3E
-.endUpperTalTalHeightsAlt
-
-    cp   $06                                      ;; 00:31F1 $FE $06
-    jr   nz, .endWindfishsEggAlt                  ;; 00:31F3 $20 $0C
-    ld   a, [wOverworldRoomStatus + $06]          ;; 00:31F5 $FA $06 $D8
-    and  OW_ROOM_STATUS_CHANGED                   ;; 00:31F8 $E6 $10
-    jr   z, .altRoomsEnd                          ;; 00:31FA $28 $25
-    ld   bc, Overworld06Alt ; Windfish's Egg open ;; 00:31FC $01 $96 $44
-    jr   .loadBankForOverworldRooms               ;; 00:31FF $18 $2E
-.endWindfishsEggAlt
-
-    cp   $1B                                      ;; 00:3201 $FE $1B
-    jr   nz, .endTalTalHeightsAlt                 ;; 00:3203 $20 $0C
-    ld   a, [wOverworldRoomStatus + $2B]          ;; 00:3205 $FA $2B $D8
-    and  OW_ROOM_STATUS_CHANGED                   ;; 00:3208 $E6 $10
-    jr   z, .altRoomsEnd                          ;; 00:320A $28 $15
-    ld   bc, Overworld1BAlt ; Angler's Tunnel upper water dry ;; 00:320C $01 $0F $4C
-    jr   .loadBankForOverworldRooms               ;; 00:320F $18 $1E
-.endTalTalHeightsAlt
-
-    cp   $2B                                      ;; 00:3211 $FE $2B
-    jr   nz, .altRoomsEnd                         ;; 00:3213 $20 $0C
-    ld   a, [wOverworldRoomStatus + $2B]          ;; 00:3215 $FA $2B $D8
-    and  OW_ROOM_STATUS_CHANGED                   ;; 00:3218 $E6 $10
-    jr   z, .altRoomsEnd                          ;; 00:321A $28 $05
-    ld   bc, Overworld2BAlt ; Angler's Tunnel open ;; 00:321C $01 $9A $50
-    jr   .loadBankForOverworldRooms               ;; 00:321F $18 $0E
-
-.altRoomsEnd
+    ;LSD: Removed overworld ALT rooms code
 
     ;
     ; Get room address from index
@@ -6016,6 +5720,10 @@ LoadRoom::
     ; bc: address of room header data
     ;
 .parseRoomHeader
+    ld   a, CART_SRAM_ENABLE
+    ld   [rRAMG], a
+    ld   a, BANK(sDynamicRoomData)
+    ld   [rRAMB], a
 
     ; Parse header first byte (animated tiles group)
     ld   a, [bc]                                  ;; 00:323A $0A
@@ -7340,10 +7048,13 @@ FillRoomMapWithObject::
 
 ; Retrieve the entities list for this room, and load each entity from its definition.
 LoadRoomEntities::
-    callsb UpdateRecentRoomsList                  ;; 00:37FE $3E $01 $EA $00 $21 $CD $02 $5F
+    ;LSD: Removed UpdateRecentRoomsList call, as we want to keep enemies dead forever.
 
     ld   a, BANK(OverworldEntitiesPointersTable)  ;; 00:3806 $3E $16
     ld   [rSelectROMBank], a                      ;; 00:3808 $EA $00 $21
+    ;LSD: Load right sram bank
+    ld   a, BANK(sDynamicEntityData)
+    ld   [rRAMB], a
 
     ; Reset the entities load order
     xor  a                                        ;; 00:380B $AF
@@ -7371,7 +7082,7 @@ LoadRoomEntities::
     ; If in Eagle's Tower…
     ldh  a, [hMapId]                              ;; 00:3820 $F0 $F7
     cp   MAP_EAGLES_TOWER                         ;; 00:3822 $FE $06
-    jr   nz, .eaglesTowerEnd                      ;; 00:3824 $20 $2A
+    jr   .eaglesTowerEnd ; LSD never spawn wrecking ball ;; 00:3824 $20 $2A
     ; … and [hMapRoom] == [wWreckingBallRoom]…
     ld   a, [wWreckingBallRoom]                   ;; 00:3826 $FA $6F $DB
     ld   hl, hMapRoom                             ;; 00:3829 $21 $F6 $FF
@@ -7434,6 +7145,14 @@ LoadRoomEntities::
     call LoadEntityFromDefinition                 ;; 00:3872 $CD $83 $38
     jr   .loop                                    ;; 00:3875 $18 $F6
 .break
+    
+    ld   a, [wCurrentBank]
+    push af
+    ld   a, BANK(LSD_LoadGlobalFloorItems)
+    call SwitchBank
+    call LSD_LoadGlobalFloorItems
+    pop  af
+    ld   [wCurrentBank], a
 
     call ReloadSavedBank                          ;; 00:3877 $CD $1D $08
     ret                                           ;; 00:387A $C9
@@ -7611,7 +7330,7 @@ ReplaceEvilEagleRiderHiddenTiles::
     xor  a                                        ;; 00:3FC6 $AF
     ldh  [hReplaceTiles], a                       ;; 00:3FC7 $E0 $A5
 
-    ld   a, BANK(LinkCharacterTiles)              ;; 00:3FC9 $3E $0C
+    ld   a, BANK(LinkCharacterTilesGBC)           ;; 00:3FC9 $3E $0C
     ld   [rSelectROMBank], a                      ;; 00:3FCB $EA $00 $21
     jp   DrawLinkSpriteAndReturn                  ;; 00:3FCE $C3 $2E $1D
 

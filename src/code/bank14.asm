@@ -699,6 +699,11 @@ jr_014_4D6F:
 UpdateEntityTimers::
     xor  a                                        ;; 14:4D73 $AF
     ldh  [hActiveEntityNoBGCollision], a          ;; 14:4D74 $E0 $BE
+
+    ;LSD: Load the sprite offset
+    ld   hl, wEntitiesSpriteOffsetTable
+    add  hl, bc
+    ld   a, [hl]
     ldh  [hActiveEntityTilesOffset], a            ;; 14:4D76 $E0 $F5
 
     ld   a, [wGameplayType]                       ;; 14:4D78 $FA $95 $DB
@@ -2010,37 +2015,7 @@ label_014_57E1:
 ; Outputs:
 ;   hl   room status address
 GetRoomStatusAddressForMapPosition::
-    ld   hl, MapLayout11                          ;; 14:5838 $21 $E0 $44
-    ldh  a, [hMapId]                              ;; 14:583B $F0 $F7
-    cp   MAP_COLOR_DUNGEON                        ;; 14:583D $FE $FF
-    jr   z, .jr_5866                              ;; 14:583F $28 $25
-
-    cp   MAP_DUNGEON_G1                           ;; 14:5841 $FE $0B
-    jr   nc, ret_014_5883                         ;; 14:5843 $30 $3E
-
-    ld   hl, MapLayout0                           ;; 14:5845 $21 $20 $42
-    swap a                                        ;; 14:5848 $CB $37
-    ld   c, a                                     ;; 14:584A $4F
-    ld   b, $00                                   ;; 14:584B $06 $00
-    sla  c                                        ;; 14:584D $CB $21
-    rl   b                                        ;; 14:584F $CB $10
-    sla  c                                        ;; 14:5851 $CB $21
-    rl   b                                        ;; 14:5853 $CB $10
-    add  hl, bc                                   ;; 14:5855 $09
-    ldh  a, [hMapId]                              ;; 14:5856 $F0 $F7
-    cp   MAP_EAGLES_TOWER                         ;; 14:5858 $FE $06
-    jr   nz, .jr_5866                             ;; 14:585A $20 $0A
-
-    ld   a, [wHasInstrument7]                     ;; 14:585C $FA $6B $DB
-    and  $04                                      ;; 14:585F $E6 $04
-    jr   z, .jr_5866                              ;; 14:5861 $28 $03
-
-    ld   hl, MapLayout12                          ;; 14:5863 $21 $20 $45
-
-.jr_5866
-    add  hl, de                                   ;; 14:5866 $19
-    ld   a, [hl]                                  ;; 14:5867 $7E
-    ld   e, a                                     ;; 14:5868 $5F
+    ; LSD: Simplified as room position == room id
     ld   d, $00                                   ;; 14:5869 $16 $00
     ld   hl, wIndoorARoomStatus                   ;; 14:586B $21 $00 $D9
     ldh  a, [hMapId]                              ;; 14:586E $F0 $F7
@@ -2090,36 +2065,10 @@ jr_014_5894:
 
 func_014_5897::
     ldh  a, [hMapId]                              ;; 14:5897 $F0 $F7
-    cp   MAP_COLOR_DUNGEON                        ;; 14:5899 $FE $FF
-    jr   nz, .jr_58A2                             ;; 14:589B $20 $05
-
-    ld   hl, MapLayout11                          ;; 14:589D $21 $E0 $44
-    jr   jr_014_58C7                              ;; 14:58A0 $18 $25
-
-.jr_58A2
     cp   $0B                                      ;; 14:58A2 $FE $0B
     jr   nc, jr_014_58D1                          ;; 14:58A4 $30 $2B
 
     ld   hl, MapLayout0                           ;; 14:58A6 $21 $20 $42
-    swap a                                        ;; 14:58A9 $CB $37
-    ld   e, a                                     ;; 14:58AB $5F
-    ld   d, $00                                   ;; 14:58AC $16 $00
-    sla  e                                        ;; 14:58AE $CB $23
-    rl   d                                        ;; 14:58B0 $CB $12
-    sla  e                                        ;; 14:58B2 $CB $23
-    rl   d                                        ;; 14:58B4 $CB $12
-    add  hl, de                                   ;; 14:58B6 $19
-    ldh  a, [hMapId]                              ;; 14:58B7 $F0 $F7
-    cp   MAP_EAGLES_TOWER                         ;; 14:58B9 $FE $06
-    jr   nz, jr_014_58C7                          ;; 14:58BB $20 $0A
-
-    ld   a, [wHasInstrument7]                     ;; 14:58BD $FA $6B $DB
-    and  $04                                      ;; 14:58C0 $E6 $04
-    jr   z, jr_014_58C7                           ;; 14:58C2 $28 $03
-
-    ld   hl, MapLayout12                          ;; 14:58C4 $21 $20 $45
-
-jr_014_58C7:
     ld   a, [wIndoorRoom]                         ;; 14:58C7 $FA $AE $DB
     ld   e, a                                     ;; 14:58CA $5F
     ld   d, $00                                   ;; 14:58CB $16 $00
@@ -2131,24 +2080,16 @@ jr_014_58D1:
     ldh  a, [hMapRoom]                            ;; 14:58D1 $F0 $F6
     ld   c, a                                     ;; 14:58D3 $4F
     ld   b, $00                                   ;; 14:58D4 $06 $00
-    ldh  a, [hMapId]                              ;; 14:58D6 $F0 $F7
-    cp   MAP_COLOR_DUNGEON                        ;; 14:58D8 $FE $FF
-    jr   nz, .jr_58E1                             ;; 14:58DA $20 $05
-
-    ld   hl, ColorDungeonEventsTable              ;; 14:58DC $21 $00 $42
-    jr   jr_014_58ED                              ;; 14:58DF $18 $0C
-
-.jr_58E1
-    cp   $1A                                      ;; 14:58E1 $FE $1A
-    jr   nc, .jr_58EA                             ;; 14:58E3 $30 $05
-
-    cp   $06                                      ;; 14:58E5 $FE $06
-    jr   c, .jr_58EA                              ;; 14:58E7 $38 $01
-
-    inc  b                                        ;; 14:58E9 $04
-
-.jr_58EA
+    
     ld   hl, DungeonEventsTable                   ;; 14:58EA $21 $00 $40
+
+    ; LSD: Use sDungeonEventTable for rooms below $40
+    cp   $40
+    jr   nc, jr_014_58ED
+    call EnableSRAM
+    ld   a, BANK(sDungeonEventTable)
+    ld   [rRAMB], a
+    ld   hl, sDungeonEventTable
 
 jr_014_58ED:
     add  hl, bc                                   ;; 14:58ED $09
@@ -2163,6 +2104,8 @@ jr_014_58ED:
 
 func_014_5900::
     ldh  a, [hMapRoom]                            ;; 14:5900 $F0 $F6
+    cp   $40
+    jr   c, .loadFromSRAM
     ld   e, a                                     ;; 14:5902 $5F
     ld   a, [wIsIndoor]                           ;; 14:5903 $FA $A5 $DB
     ld   d, a                                     ;; 14:5906 $57
@@ -2172,7 +2115,7 @@ func_014_5900::
 
     ld   d, $00                                   ;; 14:590D $16 $00
     ld   hl, ColorDungeonRoomChestsTable          ;; 14:590F $21 $60 $48
-    jr   jr_014_5920                              ;; 14:5912 $18 $0C
+    jr   .jr_014_5920                              ;; 14:5912 $18 $0C
 
 .jr_5914
     cp   $1A                                      ;; 14:5914 $FE $1A
@@ -2186,19 +2129,22 @@ func_014_5900::
 .jr_591D
     ld   hl, RoomChestsTable                      ;; 14:591D $21 $60 $45
 
-jr_014_5920:
+.jr_014_5920:
     add  hl, de                                   ;; 14:5920 $19
     ld   a, [hl]                                  ;; 14:5921 $7E
-    cp   $20                                      ;; 14:5922 $FE $20
-    jr   nz, .jr_5931                             ;; 14:5924 $20 $0B
-
-    ld   a, [wSwordLevel]                         ;; 14:5926 $FA $4E $DB
-    cp   $02                                      ;; 14:5929 $FE $02
-    ld   a, $20                                   ;; 14:592B $3E $20
-    jr   c, .jr_5931                              ;; 14:592D $38 $02
-
-    ld   a, $1C                                   ;; 14:592F $3E $1C
 
 .jr_5931
     ldh  [hMultiPurpose8], a                      ;; 14:5931 $E0 $DF
     ret                                           ;; 14:5933 $C9
+
+.loadFromSRAM:
+    add  a, LOW(sDungenChestContents)
+    ld   l, a
+    adc  a, HIGH(sDungenChestContents)
+    sub  l
+    ld   h, a
+    ld   a, BANK(sDungenChestContents)
+    ld   [rRAMB], a
+    ld   a, [hl]
+    ldh  [hMultiPurpose8], a
+    ret

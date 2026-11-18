@@ -15,6 +15,8 @@
 DEF NameEntryCharacterTableSize EQUS "(NameEntryCharacterTable.end - NameEntryCharacterTable)"
 
 FileSelectionEntryPoint::
+    call LSD_randSRAM ; LSD run our map seed every frame on the intro sequence
+
     call func_5DC0                                ;; 01:47CE $CD $C0 $5D
     ld   a, [wGameplaySubtype]                    ;; 01:47D1 $FA $96 $DB
     JP_TABLE                                      ;; 01:47D4 $C7
@@ -512,6 +514,9 @@ FileCreationEntryPoint::
 ._00 dw FileCreationInit1Handler                  ;; 01:4A0B
 ._01 dw FileCreationInit2Handler                  ;; 01:4A0D
 ._02 dw FileCreationInteractiveHandler            ;; 01:4A0F
+._03 dw LSD_FileCreationPrepareGfxSelect1
+._04 dw LSD_FileCreationPrepareGfxSelect2
+._05 dw LSD_FileCreationInteractiveGfxSelect
 
 FileCreationInit1Handler::
     call IncrementGameplaySubtype                 ;; 01:4A11 $CD $D6 $44
@@ -688,6 +693,9 @@ ENDC
     ld   e, NAME_LENGTH                           ;; 01:4B03 $1E $05
 .loop
     call EnableSRAM                               ;; 01:4B05 $CD $D0 $27
+    ;LSD On a new save, disable seed locking
+    xor  a
+    ld   [sRandStateLocked], a
     ld   a, [hli]                                 ;; 01:4B08 $2A
     ld   [bc], a                                  ;; 01:4B09 $02
     inc  bc                                       ;; 01:4B0A $03
@@ -710,7 +718,7 @@ ENDC
     xor  a                                        ;; 01:4B23 $AF
     ldi  [hl], a                                  ;; 01:4B24 $22
     ld   [hl], a                                  ;; 01:4B25 $77
-    jp   label_001_4555                           ;; 01:4B26 $C3 $55 $45
+    jp   IncrementGameplaySubtype
 
 .validationEnd
     call func_001_4BF5                            ;; 01:4B29 $CD $F5 $4B

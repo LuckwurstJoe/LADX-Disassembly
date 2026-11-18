@@ -62,7 +62,7 @@ InitSaveFiles::
     ; write a default save file with everything unlocked
     ld   a, [ROM_DebugTool1]                      ;; 01:46BC $FA $03 $00
     and  a                                        ;; 01:46BF $A7
-    jp   z, .return                               ;; 01:46C0 $CA $93 $47
+    jp   .return                               ;; 01:46C0 $CA $93 $47
 
     ld   e, $00                                   ;; 01:46C3 $1E $00
     ld   d, $00                                   ;; 01:46C5 $16 $00
@@ -436,6 +436,7 @@ jr_001_531D::
     ld   [wMaxBombs], a                           ;; 01:539B $EA $77 $DB
     ld   a, $20                                   ;; 01:539E $3E $20
     ld   [wMaxMagicPowder], a                     ;; 01:53A0 $EA $76 $DB
+    ld   [wMaxMagicRod], a
     ld   a, ROOM_INDOOR_B_MARIN_HOUSE             ;; 01:53A3 $3E $A3
     ld   [wMapEntranceRoom], a                    ;; 01:53A5 $EA $9C $DB
     ldh  [hMapRoom], a                            ;; 01:53A8 $E0 $F6
@@ -458,6 +459,39 @@ jr_001_531D::
     ld   [wWreckingBallPosX], a                   ;; 01:53CE $EA $70 $DB
     ld   a, $27                                   ;; 01:53D1 $3E $27
     ld   [wWreckingBallPosY], a                   ;; 01:53D3 $EA $71 $DB
+    ;LSD setup start items
+    ld   a, $01
+    ld   hl, wInventoryItems
+    ld   [hl+], a
+    ld   [wSwordLevel], a
+    ;ld   a, $0E
+    ;ld   [hl+], a
+    inc  hl
+    ld   a, $0F
+    ld   [hl+], a
+    ;ld   a, $10
+    ;ld   [hl+], a
+    ;ld   a, $0A
+    ;ld   [hl+], a
+    ;ld   a, $11
+    ;ld   [hl+], a
+    ;ld   a, $02
+    ;ld   [hl+], a
+    ;ld   a, $12
+    ;ld   [hl+], a
+    ;ld   a, $10
+    ;ld   [wBombCount], a
+
+    ld   a, BANK(wGlobalInventoryTable)
+    ldh  [rSVBK], a
+    xor  a
+    ld   hl, wGlobalInventoryTable
+.clearwGlobalInventoryTableLoop:
+    ld   [hl+], a
+    bit  5, h
+    jr   z, .clearwGlobalInventoryTableLoop
+    ldh  [rSVBK], a
+    
     jr   .finish                                  ;; 01:53D6 $18 $B6
 
 Data_001_53D8::
@@ -720,8 +754,8 @@ CreateMinimapTilemap::
     ldh  [hMultiPurpose1], a                      ;; 01:5602 $E0 $D8
     ld   a, $01                                   ;; 01:5604 $3E $01
     ldh  [hMultiPurpose2], a                      ;; 01:5606 $E0 $D9
-    ldh  a, [hMapId]                              ;; 01:5608 $F0 $F7
-    add  a, $B1                                   ;; 01:560A $C6 $B1
+    ld   a, [wDungeonDepth]
+    add  a, $B0                                   ;; 01:560A $C6 $B1
     ldh  [hMultiPurpose3], a                      ;; 01:560C $E0 $DA
     pop  hl                                       ;; 01:560E $E1
     call func_001_5619 ;show dungeon map no       ;; 01:560F $CD $19 $56
@@ -1462,87 +1496,6 @@ jr_001_5DCC::
     ret                                           ;; 01:5DE5 $C9
 
 SaveGameToFile::
-IF __RECALCULATE_MAX_HEARTS__
-    ; Recalculate max health before saving
-    call RecalculateMaxHearts
-ENDC
-    ; Does the player have any health?
-    ld   a, [wHealth]                             ;; 01:5DE6 $FA $5A $DB
-    and  a                                        ;; 01:5DE9 $A7
-    jr   nz, .skipHealthReset                     ;; 01:5DEA $20 $0E
-    ; If not, get the current max health
-    ld   a, [wMaxHearts]                          ;; 01:5DEC $FA $5B $DB
-    ld   e, a                                     ;; 01:5DEF $5F
-    ld   d, $00                                   ;; 01:5DF0 $16 $00
-    ; and use it as an index into the table
-    ld   hl, MaxHeartsToStartingHealthTable       ;; 01:5DF2 $21 $95 $52
-    add  hl, de                                   ;; 01:5DF5 $19
-    ; to provide the starting health value.
-    ld   a, [hl]                                  ;; 01:5DF6 $7E
-    ld   [wHealth], a                             ;; 01:5DF7 $EA $5A $DB
-
-.skipHealthReset:
-    call SynchronizeDungeonsItemFlags_trampoline  ;; 01:5DFA $CD $02 $28
-    ld   a, [wSaveSlot]                           ;; 01:5DFD $FA $A6 $DB
-    sla  a                                        ;; 01:5E00 $CB $27
-    ld   e, a                                     ;; 01:5E02 $5F
-    ld   d, $00                                   ;; 01:5E03 $16 $00
-    ld   hl, SaveGameTable                        ;; 01:5E05 $21 $F8 $49
-    add  hl, de                                   ;; 01:5E08 $19
-    ld   a, [hli]                                 ;; 01:5E09 $2A
-    ld   h, [hl]                                  ;; 01:5E0A $66
-    ld   l, a                                     ;; 01:5E0B $6F
-    ld   bc, wOverworldRoomStatus                 ;; 01:5E0C $01 $00 $D8
-    ld   de, SAVE_MAIN_SIZE                       ;; 01:5E0F $11 $80 $03
-
-.loopSaveMain
-    call EnableSRAM                               ;; 01:5E12 $CD $D0 $27
-    ld   a, [bc]                                  ;; 01:5E15 $0A
-    inc  bc                                       ;; 01:5E16 $03
-    call EnableSRAM                               ;; 01:5E17 $CD $D0 $27
-    ldi  [hl], a                                  ;; 01:5E1A $22
-    dec  de                                       ;; 01:5E1B $1B
-    ld   a, e                                     ;; 01:5E1C $7B
-    or   d                                        ;; 01:5E1D $B2
-    jr   nz, .loopSaveMain                        ;; 01:5E1E $20 $F2
-    ld   bc, wColorDungeonItemFlags               ;; 01:5E20 $01 $DA $DD
-    ld   de, SAVE_DX1_SIZE                        ;; 01:5E23 $11 $05 $00
-
-.loopSaveDX1
-    call EnableSRAM                               ;; 01:5E26 $CD $D0 $27
-    ld   a, [bc]                                  ;; 01:5E29 $0A
-    inc  bc                                       ;; 01:5E2A $03
-    call EnableSRAM                               ;; 01:5E2B $CD $D0 $27
-    ldi  [hl], a                                  ;; 01:5E2E $22
-    dec  de                                       ;; 01:5E2F $1B
-    ld   a, e                                     ;; 01:5E30 $7B
-    or   d                                        ;; 01:5E31 $B2
-    jr   nz, .loopSaveDX1                         ;; 01:5E32 $20 $F2
-    ld   bc, wColorDungeonRoomStatus              ;; 01:5E34 $01 $E0 $DD
-    ld   de, SAVE_DX2_SIZE                        ;; 01:5E37 $11 $20 $00
-
-.loopSaveDX2
-    call EnableSRAM                               ;; 01:5E3A $CD $D0 $27
-    ld   a, [bc]                                  ;; 01:5E3D $0A
-    inc  bc                                       ;; 01:5E3E $03
-    call EnableSRAM                               ;; 01:5E3F $CD $D0 $27
-    ldi  [hl], a                                  ;; 01:5E42 $22
-    dec  de                                       ;; 01:5E43 $1B
-    ld   a, e                                     ;; 01:5E44 $7B
-    or   d                                        ;; 01:5E45 $B2
-    jr   nz, .loopSaveDX2                         ;; 01:5E46 $20 $F2
-    call EnableSRAM                               ;; 01:5E48 $CD $D0 $27
-    ld   a, [wTunicType]                          ;; 01:5E4B $FA $0F $DC
-    call EnableSRAM                               ;; 01:5E4E $CD $D0 $27
-    ldi  [hl], a                                  ;; 01:5E51 $22
-    call EnableSRAM                               ;; 01:5E52 $CD $D0 $27
-    ld   a, [wPhotos1]                            ;; 01:5E55 $FA $0C $DC
-    call EnableSRAM                               ;; 01:5E58 $CD $D0 $27
-    ldi  [hl], a                                  ;; 01:5E5B $22
-    call EnableSRAM                               ;; 01:5E5C $CD $D0 $27
-    ld   a, [wPhotos2]                            ;; 01:5E5F $FA $0D $DC
-    call EnableSRAM                               ;; 01:5E62 $CD $D0 $27
-    ldi  [hl], a                                  ;; 01:5E65 $22
     ret                                           ;; 01:5E66 $C9
 
 IF __RECALCULATE_MAX_HEARTS__
@@ -1664,62 +1617,7 @@ ClampMaxHearts:
     ret                                           ;; 01:5F29 $C9
 ENDC
 
-
-; Copy the current dungeon item flags to the global and persistent
-; dungeons item flags table.
-SynchronizeDungeonsItemFlags::
-    push bc                                       ;; 01:5E67 $C5
-
-    ; If on overworld, do nothing
-    ld   a, [wIsIndoor]                           ;; 01:5E68 $FA $A5 $DB
-    and  a                                        ;; 01:5E6B $A7
-    jr   z, .return                               ;; 01:5E6C $28 $27
-
-    ; If inside the Color dungeon…
-    ldh  a, [hMapId]                              ;; 01:5E6E $F0 $F7
-    cp   MAP_COLOR_DUNGEON                        ;; 01:5E70 $FE $FF
-    jr   nz, .notColorDungeon                     ;; 01:5E72 $20 $05
-
-    ; hl = wColorDungeonItemFlags
-    ld   hl, wColorDungeonItemFlags               ;; 01:5E74 $21 $DA $DD
-    jr   .endIf                                   ;; 01:5E77 $18 $11
-
-.notColorDungeon
-    ; If the map is not a dungeon, return.
-    cp   MAP_CAVE_B                               ;; 01:5E79 $FE $0A
-    jr   nc, .return                              ;; 01:5E7B $30 $18
-
-    ; Select the correct item flags slot for the current dungeon
-    ; hl = wDungeonItemFlags + (hMapId * 5)
-IF !LANG_DE
-    ld   hl, wDungeonItemFlags                    ;; 01:5E7D $21 $16 $DB
-ENDC
-    ld   e, a                                     ;; 01:5E80 $5F
-    sla  a                                        ;; 01:5E81 $CB $27
-    sla  a                                        ;; 01:5E83 $CB $27
-    add  a, e                                     ;; 01:5E85 $83
-    ld   e, a                                     ;; 01:5E86 $5F
-    ld   d, $00                                   ;; 01:5E87 $16 $00
-IF LANG_DE
-    ld   hl, wDungeonItemFlags
-ENDC
-    add  hl, de                                   ;; 01:5E89 $19
-.endIf
-
-    ; Copy 5 values from wCurrentDungeonItemFlags to wDungeonItemFlags
-    ld   de, wCurrentDungeonItemFlags             ;; 01:5E8A $11 $CC $DB
-    ld   c, $05                                   ;; 01:5E8D $0E $05
-.loop
-    ld   a, [de]                                  ;; 01:5E8F $1A
-    inc  de                                       ;; 01:5E90 $13
-    ldi  [hl], a                                  ;; 01:5E91 $22
-    ; loop while c > 0
-    dec  c                                        ;; 01:5E92 $0D
-    jr   nz, .loop                                ;; 01:5E93 $20 $FA
-
-.return
-    pop  bc                                       ;; 01:5E95 $C1
-    ret                                           ;; 01:5E96 $C9
+;LSD: Removed SynchronizeDungeonsItemFlags, we only have current
 
 EntityPosXOffsetTable::
 .right:  db $A0                                   ;; 01:5E97
@@ -1829,81 +1727,7 @@ PrepareEntityPositionForRoomTransition::
     pop  bc                                       ;; 01:5F00 $C1
     ret                                           ;; 01:5F01 $C9
 
-; Add the current room to the recent rooms list (if not already present).
-UpdateRecentRoomsList::
-    ; The recent rooms list has 6 slots
-    ld   c, $06                                   ;; 01:5F02 $0E $06
-    ldh  a, [hMapRoom]                            ;; 01:5F04 $F0 $F6
-    ld   hl, wRecentRooms                         ;; 01:5F06 $21 $81 $CE
-
-    ; For each slot…
-.findRoomInList
-    ; if the slot already contains the current room,
-    ; don't add it again and simply return.
-    cp   [hl]                                     ;; 01:5F09 $BE
-    jr   z, .return                               ;; 01:5F0A $28 $21
-    inc  hl                                       ;; 01:5F0C $23
-    dec  c                                        ;; 01:5F0D $0D
-    jr   nz, .findRoomInList                      ;; 01:5F0E $20 $F9
-
-    ;
-    ; Append the current room to the recents rooms list
-    ;
-
-    ; Increment the index of the next slot
-    ld   a, [wRecentRoomsIndex]                   ;; 01:5F10 $FA $80 $CE
-    inc  a                                        ;; 01:5F13 $3C
-    ; (if the index goes past 5, reset it to 0)
-    cp   $06                                      ;; 01:5F14 $FE $06
-    jr   nz, .wrapIndexEnd                        ;; 01:5F16 $20 $01
-    xor  a                                        ;; 01:5F18 $AF
-.wrapIndexEnd
-    ld   [wRecentRoomsIndex], a                   ;; 01:5F19 $EA $80 $CE
-
-    ; Read the previous value of the slot into DE
-    ld   e, a                                     ;; 01:5F1C $5F
-    ld   d, $00                                   ;; 01:5F1D $16 $00
-    ld   hl, wRecentRooms                         ;; 01:5F1F $21 $81 $CE
-    add  hl, de                                   ;; 01:5F22 $19
-    ld   e, [hl]                                  ;; 01:5F23 $5E
-
-    ; Write the current room id to the slot
-    ldh  a, [hMapRoom]                            ;; 01:5F24 $F0 $F6
-    ld   [hl], a                                  ;; 01:5F26 $77
-
-    ; Clear the flag indicating cleared entities for the evicted room.
-    ; (This means that enemies will not respawn in a room before 6
-    ; other different rooms have been visited.)
-    ld   hl, wEntitiesClearedRooms                ;; 01:5F27 $21 $00 $CF
-    add  hl, de                                   ;; 01:5F2A $19
-    ld   [hl], $00                                ;; 01:5F2B $36 $00
-
-.return
-    ret                                           ;; 01:5F2D $C9
-
 HideAllSprites::
-    ; $0000 controls whether to enable external RAM
-    ld   hl, rRAMG                                ;; 01:5F2E $21 $00 $00
-
-    ; If CGB…
-    ldh  a, [hIsGBC]                              ;; 01:5F31 $F0 $FE
-    and  a                                        ;; 01:5F33 $A7
-    jr   z, .enableSRAM                           ;; 01:5F34 $28 $04
-    ; disable external RAM
-    ; (probably because an extra RAM bank available on CGB can be used)
-    ld   [hl], CART_SRAM_DISABLE                  ;; 01:5F36 $36 $00
-    jr   .endIf                                   ;; 01:5F38 $18 $02
-
-.enableSRAM
-    ; else write $FF to rRAMG, which also should disable
-    ; external RAM; only a value of $0A enables external
-    ; RAM (SRAM) on MBC5 according to Pandocs. SRAM is also
-    ; not used in this subroutine. What's actually going on
-    ; here? Stubbed out code that hasn't been removed even
-    ; though it's run every frame?
-    ld   [hl], $FF                                ;; 01:5F3A $36 $FF
-.endIf
-
     ; loop counter
     ld   b, OAM_COUNT                             ;; 01:5F3C $06 $28
     ; value to write
@@ -3043,7 +2867,7 @@ LoadSirenInstrumentTiles::
     add  hl, bc                                   ;; 01:6C95 $09
     ld   e, l                                     ;; 01:6C96 $5D
     ld   d, h                                     ;; 01:6C97 $54
-    ld   hl, SirenInstrumentsTiles                ;; 01:6C98 $21 $00 $4D
+    ld   hl, SirenInstrumentsTilesGBC             ;; 01:6C98 $21 $00 $4D
     add  hl, bc                                   ;; 01:6C9B $09
     call CopySirenInstrumentTiles                 ;; 01:6C9C $CD $3A $0C
     ldh  a, [hBGTilesLoadingStage]                ;; 01:6C9F $F0 $92
@@ -3166,70 +2990,6 @@ include "code/oam_dma.asm"
 IntroRainTiles::
 incbin "src/gfx/intro/rain.2bpp"
 
-; Background tile where the Dungeon entrance arrow should be displayed
-MinimapEntrancePosition::
-    dw vBGMap1 + $20B + MINIMAP_ARROW_TAIL_CAVE   ;; 01:6DCA
-    dw vBGMap1 + $20B + MINIMAP_ARROW_BOTTLE_GROTTO ;; 01:6DCC
-    dw vBGMap1 + $20B + MINIMAP_ARROW_KEY_CAVERN  ;; 01:6DCE
-    dw vBGMap1 + $20B + MINIMAP_ARROW_ANGLERS_TUNNEL ;; 01:6DD0
-    dw vBGMap1 + $20B + MINIMAP_ARROW_CATFISHS_MAW ;; 01:6DD2
-    dw vBGMap1 + $20B + MINIMAP_ARROW_FACE_SHRINE ;; 01:6DD4
-    dw vBGMap1 + $20B + MINIMAP_ARROW_EAGLES_TOWER ;; 01:6DD6
-    dw vBGMap1 + $20B + MINIMAP_ARROW_TURTLE_ROCK ;; 01:6DD8
-    dw $0    ; (unused)                           ;; 01:6DDA
-    dw $0    ; (unused)                           ;; 01:6DDC
-    dw $0    ; (unused)                           ;; 01:6DDE
-    dw $0    ; (unused)                           ;; 01:6DE0
-    dw $0    ; (unused)                           ;; 01:6DE2
-    dw $0    ; (unused)                           ;; 01:6DE4
-    dw $0    ; (unused)                           ;; 01:6DE6
-    dw vBGMap1 + $20B + MINIMAP_ARROW_COLOR_DUNGEON ;; 01:6DE8
-
-; Called after tiles are copied to the BG when loading a map all at once
-UpdateMinimapEntranceArrowAndReturn::
-    ; If DebugTool2 is enabled, return immediately
-    ld   a, [ROM_DebugTool2]                      ;; 01:6DEA $FA $04 $00
-    and  a                                        ;; 01:6DED $A7
-    ret  nz                                       ;; 01:6DEE $C0
-
-    ; If IsIndoor…
-    ld   a, [wIsIndoor]                           ;; 01:6DEF $FA $A5 $DB
-    and  a                                        ;; 01:6DF2 $A7
-    jr   z, .return                               ;; 01:6DF3 $28 $23
-    ; then a = (MapId == MAP_COLOR_DUNGEON ? $0F : MapId)
-    ldh  a, [hMapId]                              ;; 01:6DF5 $F0 $F7
-    cp   MAP_COLOR_DUNGEON                        ;; 01:6DF7 $FE $FF
-    jr   nz, .notColorDungeon                     ;; 01:6DF9 $20 $04
-    ld   a, $0F                                   ;; 01:6DFB $3E $0F
-    jr   .endIf                                   ;; 01:6DFD $18 $04
-
-.notColorDungeon
-    ; If MapId >= 8 (not a dungeon), return
-    cp   $08                                      ;; 01:6DFF $FE $08
-    jr   nc, .return                              ;; 01:6E01 $30 $15
-.endIf
-
-    ; hl = MinimapEntrancePosition[MapId]
-    sla  a                                        ;; 01:6E03 $CB $27
-    ld   e, a                                     ;; 01:6E05 $5F
-    ld   d, $00                                   ;; 01:6E06 $16 $00
-    ld   hl, MinimapEntrancePosition              ;; 01:6E08 $21 $CA $6D
-    add  hl, de                                   ;; 01:6E0B $19
-    ld   a, [hli]                                 ;; 01:6E0C $2A
-    ld   h, [hl]                                  ;; 01:6E0D $66
-    ld   l, a                                     ;; 01:6E0E $6F
-
-    ; Display the Minimap Arrow tile ($A3) at the target address
-    ld   [hl], $A3                                ;; 01:6E0F $36 $A3
-
-    ; If IsSideScrolling…
-    ldh  a, [hIsSideScrolling]                    ;; 01:6E11 $F0 $F9
-    and  a                                        ;; 01:6E13 $A7
-    jr   z, .return                               ;; 01:6E14 $28 $02
-    ; … hide the arrow.
-    ld   [hl], $7F                                ;; 01:6E16 $36 $7F
-
-.return
-    ret                                           ;; 01:6E18 $C9
+; LSD: Removed UpdateMinimapEntranceArrowAndReturn
 
 include "code/intro.asm"

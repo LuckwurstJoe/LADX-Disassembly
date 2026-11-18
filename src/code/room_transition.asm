@@ -225,7 +225,7 @@ ApplyRoomTransition::
 
     ; Request compass sound effect to be played with a 12 frames delay
     ld   a, 12                                    ;; 02:79C6 $3E $0C
-    ld   [wCompassSfxCountdown], a                ;; 02:79C8 $EA $62 $D4
+    ;LSD: Ignore compass sound for now ld   [wCompassSfxCountdown], a                ;; 02:79C8 $EA $62 $D4
     ret                                           ;; 02:79CB $C9
 
 .dispatchTransition
@@ -360,25 +360,7 @@ RoomTransitionPrepareHandler::
     ld   hl, IndoorRoomIncrement                  ;; 02:7A4C $21 $7B $7B
     add  hl, bc                                   ;; 02:7A4F $09
 
-    ; If wRoomTransitionDirection == Top…
-    ld   a, c                                     ;; 02:7A50 $79
-    cp   DIRECTION_UP                             ;; 02:7A51 $FE $02
-    jr   nz, .noFaceShrineHack                    ;; 02:7A53 $20 $12
-
-    ; … and dungeon is Face Shrine…
-    ldh  a, [hMapId]                              ;; 02:7A55 $F0 $F7
-    cp   MAP_FACE_SHRINE                          ;; 02:7A57 $FE $05
-    jr   nz, .noFaceShrineHack                    ;; 02:7A59 $20 $0C
-
-    ; … and dungeon room is $1D…
-    ld   a, [wIndoorRoom]                         ;; 02:7A5B $FA $AE $DB
-    cp   $1D                                      ;; 02:7A5E $FE $1D
-    jr   nz, .noFaceShrineHack                    ;; 02:7A60 $20 $05
-
-    ; … actually pretend we are on map $35.
-    ld   a, $35                                   ;; 02:7A62 $3E $35
-    ld   [wIndoorRoom], a                         ;; 02:7A64 $EA $AE $DB
-.noFaceShrineHack
+    ; LSD: No face shrine hack
 
     ; a = IndoorRoomIncrement[direction]
     ; hl = wIndoorRoom

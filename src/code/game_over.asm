@@ -133,7 +133,6 @@ LoadGameOverStage2Handler::
     ld   hl, hGameOverStage                       ;; 01:42AF $21 $9C $FF
     inc  [hl]                                     ;; 01:42B2 $34
     call LoadFileMenuBG_trampoline                ;; 01:42B3 $CD $05 $09
-    call SynchronizeDungeonsItemFlags_trampoline  ;; 01:42B6 $CD $02 $28
     ret                                           ;; 01:42B9 $C9
 
 ; Unused data
@@ -227,7 +226,7 @@ func_001_4339::
 
     ld   a, [hl]                                  ;; 01:4345 $7E
     inc  a                                        ;; 01:4346 $3C
-    cp   $03                                      ;; 01:4347 $FE $03
+    cp   $02                                      ;; 01:4347 $FE $03
     jr   nz, .jr_434C                             ;; 01:4349 $20 $01
 
     xor  a                                        ;; 01:434B $AF
@@ -245,7 +244,7 @@ jr_001_434D::
     cp   $FF                                      ;; 01:4355 $FE $FF
     jr   nz, .jr_435B                             ;; 01:4357 $20 $02
 
-    ld   a, $02                                   ;; 01:4359 $3E $02
+    ld   a, $01                                   ;; 01:4359 $3E $02
 
 .jr_435B::
     ld   [hl], a                                  ;; 01:435B $77
