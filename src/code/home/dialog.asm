@@ -335,7 +335,9 @@ DialogLetterAnimationStartHandler::
 
 .delayOver
     call ClearLetterPixels                        ;; 00:24C7 $CD $F1 $49
-    jp   IncrementDialogStateAndReturn            ;; 00:24CA $C3 $85 $24
+    ; LSD: fast text. Instead of returning, continue straight into
+    ; DialogLetterAnimationEndHandler, so a letter is drawn every frame.
+    call IncrementDialogStateAndReturn
 
 DialogLetterAnimationEndHandler::
     ld   a, BANK(DialogPointerTable)              ;; 00:24CD $3E $1C
