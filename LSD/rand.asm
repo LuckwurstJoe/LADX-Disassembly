@@ -1,0 +1,122 @@
+;
+; Pseudorandom number generator
+;
+; Copyright 2018 Damian Yerrick
+;
+; This software is provided 'as-is', without any express or implied
+; warranty.  In no event will the authors be held liable for any damages
+; arising from the use of this software.
+;
+; Permission is granted to anyone to use this software for any purpose,
+; including commercial applications, and to alter it and redistribute it
+; freely, subject to the following restrictions:
+;
+; 1. The origin of this software must not be misrepresented; you must not
+;    claim that you wrote the original software. If you use this software
+;    in a product, an acknowledgment in the product documentation would be
+;    appreciated but is not required.
+; 2. Altered source versions must be plainly marked as such, and must not be
+;    misrepresented as being the original software.
+; 3. This notice may not be removed or altered from any source distribution.
+;
+#SECTION "rand_ram", WRAMX, BANK[1] {
+wRandState: ds 4
+}
+
+; Modified version from https://codeberg.org/ISSOtm/gb-starter-kit/src/branch/master/src/lib/rand.inc
+; Modified to preserve HL/DE and to be compatible with GB.HLA
+
+#SECTION "rand", ROM0 {
+;;
+; Generates a pseudorandom 16-bit integer in BC
+; using the LCG formula from cc65 rand():
+; x[i + 1] = x[i] * 0x01010101 + 0x31415927
+; @return A=B=state bits 31-24 (which have the best entropy),
+; C=state bits 23-16
+_rand8:  ; uint8_t rand8(void) __preserves_regs(d, e, h, l)
+_rand16: ; uint16_t rand16(void) __preserves_regs(d, e, h, l)
+    push hl
+    push de
+    ; Load bits 31-8 of the current value to BCA
+    ld hl, wRandState+3
+    ld a,[hl-]
+    ld b,a
+    ld a,[hl-]
+    ld c,a
+    ld a,[hl-]  ; skip D; thanks ISSOtm for the idea
+    ; Used to load bits 7-0 to E.  Reading [HL] each time turned out
+    ; no slower and saved 1 byte.
+
+    ; Multiply by 0x01010101
+    add [hl]
+    ld d,a
+    adc c
+    ld c,a
+    adc b
+    ld b,a
+
+    ; Add 0x31415927 and write back
+    ld a,[hl]
+    add $27
+    ld [hl+],a
+    ld a,d
+    adc $59
+    ld [hl+],a
+    ld a,c
+    adc $41
+    ld [hl+],a
+    ld c,a
+    ld a,b
+    adc $31
+    ld [hl],a
+    ld b,a
+    pop de
+    pop hl
+    ret
+
+; Get a random value from 0 to max-1
+_rand8range:  ; uint8_t rand8(uint8_t max) __preserves_regs(d, e, h, l)
+    ; max rand is passed in a, back it up in c, and calculate a mask in b
+    ld   c, a
+    loop b, 7 {
+        srl  a
+        or   c
+    }
+    ld  b, a
+.retry:
+    pushpop bc {
+        call _rand8
+    }
+    and  b
+    cp   c
+    jr   nc, .retry
+    jr   z, .retry
+    ret
+
+
+; Run the seed forward and store it in SRAM. This causes the main map generation seed to constantly change
+; Only call this outside the usual game.
+LSD_randSRAM:
+    call EnableSRAM
+    ld   hl, sRandState
+    ld   de, wRandState
+    loop c, 4 {
+        ld  a, [hl+]
+        ld  [de], a
+        inc de
+    }
+    ld   a, [sRandStateLocked]
+    and  a, a
+    ret  nz ; If the rand state is locked, skip cycling it.
+
+    call _rand8
+LSD_CopyRandStateToSRAM:
+    ld   de, sRandState
+    ld   hl, wRandState
+    loop c, 4 {
+        ld  a, [hl+]
+        ld  [de], a
+        inc de
+    }
+    ret
+}

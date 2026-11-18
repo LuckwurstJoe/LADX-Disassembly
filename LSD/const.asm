@@ -1,0 +1,48 @@
+INVENTORY_SWORD = $01
+INVENTORY_BOMBS = $02
+INVENTORY_POWER_BRACELET = $03
+INVENTORY_SHIELD = $04
+INVENTORY_BOW = $05
+INVENTORY_HOOKSHOT = $06
+INVENTORY_MAGIC_ROD = $07
+INVENTORY_PEGASUS_BOOTS = $08
+INVENTORY_OCARINA = $09
+INVENTORY_ROCS_FEATHER = $0A
+INVENTORY_SHOVEL = $0B
+INVENTORY_MAGIC_POWDER = $0C
+INVENTORY_BOOMERANG = $0D
+INVENTORY_PIECE_OF_POWER = $0E
+INVENTORY_POTION = $0F
+INVENTORY_POTION2 = $10
+INVENTORY_MAP = $11
+INVENTORY_COMPASS = $12
+INVENTORY_FAIRY_BOTTLE = $13
+
+INVENTORY_RUPEE_20 = $80
+INVENTORY_RUPEE_50 = $81
+INVENTORY_RUPEE_100 = $82
+INVENTORY_RUPEE_200 = $83
+INVENTORY_SMALL_KEY = $84
+
+INVENTORY_PIECE_OF_HEART  = $C0
+INVENTORY_HEART_CONTAINER = $C1
+INVENTORY_SPIN_POWERUP    = $C2
+INVENTORY_TRADE_YOSHI     = $C3
+INVENTORY_TRADE_BANANAS   = $C4
+INVENTORY_TRADE_LENS      = $C5
+INVENTORY_SWORD_L2        = $C6
+INVENTORY_HEART_REFILL    = $C7 ; refills one heart
+
+; Roles of a room, stored per room in sLSDRoomRole by mapgen.c.
+; A shop owner entity ($4D) in a room with a role acts as a villager instead.
+ROLE_NONE           = 0
+ROLE_TRADER_YOSHI   = 1
+ROLE_TRADER_BANANAS = 2
+ROLE_TRADER_LENS    = 3
+ROLE_HINT           = 4
+ROLE_OWL_SIGN       = 5 ; owl statue in the entrance of floors 2-4
+ROLE_DEVIL          = 6 ; Vire, trades a heart container for a strong item (floors 6-9)
+
+; Debugging: the floor a new game starts on. 1 = normal game.
+; 10 = straight to the final nightmare, 5 = village. Set back to 1 for a release!
+LSD_DEBUG_START_FLOOR = 1
