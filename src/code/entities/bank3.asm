@@ -33,7 +33,7 @@ Data_003_43EC::
     db   $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00   ;; 03:4484
     db   $00, $00, $00, $00, $00, $00, $01, $01, $01, $01, $03, $01, $00, $00, $00, $00   ;; 03:4494
     db   $00, $00, $00, $00, $00, $00, $01, $03, $01, $00, $00, $00, $00, $00, $00, $00   ;; 03:44A4
-    db   $00, $00, $00, $00, $00, $01, $01, $03, $01, $01, $01, $03, $00, $00, $00, $00   ;; 03:44B4
+    db   $01, $01, $01, $00, $00, $01, $01, $03, $01, $01, $01, $03, $00, $00, $00, $00   ;; 03:44B4
     db   $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00   ;; 03:44C4
     db   $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00   ;; 03:44D4
     db   $01, $01, $01, $01, $01, $02, $01, $02, $02, $02, $03, $03, $00, $00, $00, $00   ;; 03:44E4
@@ -507,11 +507,16 @@ EntityInitBigFairy::
     and  a                                        ;; 03:4A49 $A7
     jp   nz, UnloadEntityAndReturn                ;; 03:4A4A $C2 $8D $3F
 
+    ; LSD: Only allow the fairy to be used once
+    ld   a, [hRoomStatus]
+    and  a, ROOM_STATUS_EVENT_1
+    jp   nz, UnloadEntityAndReturn
+
 jr_003_4A4D:
     ld   a, $0C                                   ;; 03:4A4D $3E $0C
 
 jr_003_4A4F:
-    call SetMusicTrackIfHasSword                  ;; 03:4A4F $CD $95 $49
+    ; LSD: Disable fairy music call SetMusicTrackIfHasSword                  ;; 03:4A4F $CD $95 $49
     ld   de, wEntitiesPosXSignTable               ;; 03:4A52 $11 $20 $C2
     ld   hl, wEntitiesPosXTable                   ;; 03:4A55 $21 $00 $C2
     jp   EntityShiftPosition.shiftBy8             ;; 03:4A58 $C3 $92 $4F
@@ -835,40 +840,6 @@ EntityInitAvalaunch::
     add  hl, bc                                   ;; 03:4BE5 $09
     ld   [hl], $00                                ;; 03:4BE6 $36 $00
     jp   EntityInitNoop                           ;; 03:4BE8 $C3 $56 $4B
-
-EntityInitColorGuardianBlue::
-    ldh  a, [hIsGBC]                              ;; 03:4BEB $F0 $FE
-    and  a                                        ;; 03:4BED $A7
-    jp   z, EntityInitNoop                        ;; 03:4BEE $CA $56 $4B
-
-    call GetColorDungeonRoomStatus                ;; 03:4BF1 $CD $84 $4B
-    and  $10                                      ;; 03:4BF4 $E6 $10
-    jp   z, EntityInitNoop                        ;; 03:4BF6 $CA $56 $4B
-
-    ld   hl, wEntitiesPosXTable                   ;; 03:4BF9 $21 $00 $C2
-    add  hl, bc                                   ;; 03:4BFC $09
-    ld   a, $3C                                   ;; 03:4BFD $3E $3C
-    jr   jr_003_4C15                              ;; 03:4BFF $18 $14
-
-EntityInitColorGuardianRed::
-    ldh  a, [hIsGBC]                              ;; 03:4C01 $F0 $FE
-    and  a                                        ;; 03:4C03 $A7
-    jp   z, EntityInitNoop                        ;; 03:4C04 $CA $56 $4B
-
-    call GetColorDungeonRoomStatus                ;; 03:4C07 $CD $84 $4B
-    and  $10                                      ;; 03:4C0A $E6 $10
-    jp   z, EntityInitNoop                        ;; 03:4C0C $CA $56 $4B
-
-    ld   hl, wEntitiesPosXTable                   ;; 03:4C0F $21 $00 $C2
-    add  hl, bc                                   ;; 03:4C12 $09
-    ld   a, $63                                   ;; 03:4C13 $3E $63
-
-jr_003_4C15:
-    ld   [hl], a                                  ;; 03:4C15 $77
-    ld   hl, wEntitiesStateTable                  ;; 03:4C16 $21 $90 $C2
-    add  hl, bc                                   ;; 03:4C19 $09
-    ld   [hl], $04                                ;; 03:4C1A $36 $04
-    jp   EntityInitNoop                           ;; 03:4C1C $C3 $56 $4B
 
 EntityInitColorDungeonBook::
     ld   hl, wEntitiesPosYTable                   ;; 03:4C1F $21 $10 $C2
@@ -1702,118 +1673,10 @@ EntityInitChestWithItem::
     ld   a, [hl]                                  ;; 03:5098 $7E
     ldh  [hMultiPurposeG], a                      ;; 03:5099 $E0 $E8
     ld   d, b                                     ;; 03:509B $50
-    cp   CHEST_TAIL_KEY                           ;; 03:509C $FE $11
-    jr   nz, .jr_50AC                             ;; 03:509E $20 $0C
 
-    ; Next part seems to be related to the owl flying in when you get the tail key
-    push af                                       ;; 03:50A0 $F5
-    ld   a, [wOwlEntityIndex]                     ;; 03:50A1 $FA $01 $C5
-    ld   e, a                                     ;; 03:50A4 $5F
-    ld   hl, wEntitiesPrivateCountdown1Table      ;; 03:50A5 $21 $F0 $C2
-    add  hl, de                                   ;; 03:50A8 $19
-    ld   [hl], $38                                ;; 03:50A9 $36 $38
-    pop  af                                       ;; 03:50AB $F1
-
-.jr_50AC
     ld   e, a                                     ;; 03:50AC $5F
-    cp   CHEST_MESSAGE                            ;; 03:50AD $FE $21
-    jp   nc, MarkRoomCompleted                    ;; 03:50AF $D2 $2A $51
 
-    cp   CHEST_SEASHELL                           ;; 03:50B2 $FE $20
-IF __OPTIMIZATIONS_3__
-    jp   z, label_003_636D                        ;; 03:50B4 $20 $03
-ELSE
-    jr   nz, .jr_50B9                             ;; 03:50B4 $20 $03
-
-    jp   label_003_636D                           ;; 03:50B6 $C3 $6D $63
-ENDC
-
-.jr_50B9
-    cp   CHEST_RUPEES_50                          ;; 03:50B9 $FE $1B
-    jr   c, .jr_50D8                              ;; 03:50BB $38 $1B
-
-    cp   $20                                      ;; 03:50BD $FE $20
-    jr   nc, .jr_50D8                             ;; 03:50BF $30 $17
-
-    ld   hl, (ChestRupeeCountLow - CHEST_RUPEES_50) ;; 03:50C1 $21 $4D $50
-    add  hl, de                                   ;; 03:50C4 $19
-    ld   a, [hl]                                  ;; 03:50C5 $7E
-    ld   [wAddRupeeBufferLow], a                  ;; 03:50C6 $EA $90 $DB
-    ld   hl, (ChestRupeeCountHigh - CHEST_RUPEES_50) ;; 03:50C9 $21 $48 $50
-    add  hl, de                                   ;; 03:50CC $19
-    ld   a, [hl]                                  ;; 03:50CD $7E
-    ld   [wAddRupeeBufferHigh], a                 ;; 03:50CE $EA $8F $DB
-    ld   a, $18                                   ;; 03:50D1 $3E $18
-    ld   [wC3CE], a                               ;; 03:50D3 $EA $CE $C3
-    jr   MarkRoomCompleted                        ;; 03:50D6 $18 $52
-
-.jr_50D8
-    cp   CHEST_MAP                                ;; 03:50D8 $FE $16
-    jr   c, .jr_50EF                              ;; 03:50DA $38 $13
-
-    cp   CHEST_RUPEES_50                          ;; 03:50DC $FE $1B
-    jr   nc, .jr_50EF                             ;; 03:50DE $30 $0F
-
-    sub  CHEST_MAP                                ;; 03:50E0 $D6 $16
-    ld   e, a                                     ;; 03:50E2 $5F
-    ld   d, $00                                   ;; 03:50E3 $16 $00
-    ld   hl, wHasDungeonMap                       ;; 03:50E5 $21 $CC $DB
-    add  hl, de                                   ;; 03:50E8 $19
-    inc  [hl]                                     ;; 03:50E9 $34
-    call SynchronizeDungeonsItemFlags_trampoline  ;; 03:50EA $CD $02 $28
-    jr   MarkRoomCompleted                        ;; 03:50ED $18 $3B
-
-.jr_50EF
-    cp   CHEST_FLIPPERS                           ;; 03:50EF $FE $0C
-    jr   nc, ChestGiveNoneInventoryItem           ;; 03:50F1 $30 $32
-
-    ; When finding the Shield chest…
-    ldh  a, [hMultiPurposeG]                      ;; 03:50F3 $F0 $E8
-    cp   CHEST_SHIELD                             ;; 03:50F5 $FE $01
-    jr   nz, .shieldEnd                           ;; 03:50F7 $20 $04
-    ; increment the Shield level.
-    ld   hl, wShieldLevel                         ;; 03:50F9 $21 $44 $DB
-    inc  [hl]                                     ;; 03:50FC $34
-.shieldEnd
-
-    ; When finding the Power bracelet chest…
-    cp   CHEST_POWER_BRACELET                     ;; 03:50FD $FE $00
-    jr   nz, .powerBraceletEnd                    ;; 03:50FF $20 $0B
-    ; … and the LV2 bracelet was not found yet…
-    ld   a, [wPowerBraceletLevel]                 ;; 03:5101 $FA $43 $DB
-    cp   $02                                      ;; 03:5104 $FE $02
-    jr   z, .powerBraceletEnd                     ;; 03:5106 $28 $04
-
-    ; increment the Power bracelet level.
-    ld   hl, wPowerBraceletLevel                  ;; 03:5108 $21 $43 $DB
-    inc  [hl]                                     ;; 03:510B $34
-.powerBraceletEnd
-
-    ; When finding a bomb's chest…
-    ldh  a, [hMultiPurposeG]                      ;; 03:510C $F0 $E8
-    cp   CHEST_BOMB                               ;; 03:510E $FE $0A
-    jr   nz, .bombsEnd                            ;; 03:5110 $20 $08
-    ; increment the bomb's count by 1
-    ld   hl, wBombCount                           ;; 03:5112 $21 $4D $DB
-    ld   a, [hl]                                  ;; 03:5115 $7E
-    add  $01                                      ;; 03:5116 $C6 $01
-    daa                                           ;; 03:5118 $27
-    ld   [hl], a                                  ;; 03:5119 $77
-.bombsEnd
-
-    ld   d, b                                     ;; 03:511A $50
-    ld   hl, ChestToInventoryMappingTable         ;; 03:511B $21 $57 $50
-    add  hl, de                                   ;; 03:511E $19
-    ld   d, [hl]                                  ;; 03:511F $56
-    call GiveInventoryItem                        ;; 03:5120 $CD $72 $64
-    jr   MarkRoomCompleted                        ;; 03:5123 $18 $05
-
-ChestGiveNoneInventoryItem:
-    ; This handles giving keys, golden leafs and flippers
-    ; by increasing the proper memory location.
-    ld   hl, wInventoryItems.BButtonSlot          ;; 03:5125 $21 $00 $DB
-    add  hl, de                                   ;; 03:5128 $19
-    inc  [hl]                                     ;; 03:5129 $34
+    ; LSD: Remove a whole bunch of item giving code
 
 MarkRoomCompleted::
     call GetRoomStatusAddressInHL                 ;; 03:512A $CD $34 $51
@@ -2378,9 +2241,10 @@ SpawnEnemyDrop::
     ; if drop is not random, drop the entity
     and  a                                        ;; 03:55EA $A7
     jp   nz, .dropEntity                          ;; 03:55EB $C2 $70 $56
+    
     ; check if wGuardianAcornCounter reached limit
     ld   a, [wGuardianAcornCounter]               ;; 03:55EE $FA $71 $D4
-    inc  a                                        ;; 03:55F1 $3C
+    ;LSD inc  a                                        ;; 03:55F1 $3C
     ld   [wGuardianAcornCounter], a               ;; 03:55F2 $EA $71 $D4
     cp   GUARDIAN_ACORN_COUNTER_MAX               ;; 03:55F5 $FE $0C
     jr   c, .noGuardianAcornDrop                  ;; 03:55F7 $38 $16
@@ -2431,7 +2295,7 @@ SpawnEnemyDrop::
 .pieceOfPowerDrop:
     ; increment kill counter
     ld   hl, wPieceOfPowerKillCount               ;; 03:562E $21 $15 $D4
-    inc  [hl]                                     ;; 03:5631 $34
+    ;LSD inc  [hl]                                     ;; 03:5631 $34
     ; no drop, if counter may not reached
     ld   a, [hl]                                  ;; 03:5632 $7E
     cp   d                                        ;; 03:5633 $BA
@@ -2464,7 +2328,7 @@ SpawnEnemyDrop::
     ; randomize, if something is dropped at all
     call GetRandomByte                            ;; 03:5656 $CD $0D $28
     and  [hl]                                     ;; 03:5659 $A6
-    ret  nz                                       ;; 03:565A $C0
+    ret  ;LSD disable random drops for now nz                                       ;; 03:565A $C0
 
     ld   hl, (DropTableByIndex - 1)               ;; 03:565B $21 $9C $55
     add  hl, de                                   ;; 03:565E $19
@@ -4507,9 +4371,7 @@ HoldPickupInTheAir::
 PickHeartContainer::
     xor  a                                        ;; 03:63B0 $AF
     ld   [wActivePowerUp], a                      ;; 03:63B1 $EA $7C $D4
-    ld   a, MUSIC_HEART_CONTAINER                 ;; 03:63B4 $3E $25
-    ld   [wMusicTrackToPlay], a                   ;; 03:63B6 $EA $68 $D3
-    ld   [wBossDefeated], a                       ;; 03:63B9 $EA $6C $D4
+    ;LSD: Remove music replacement which stays like this until an instrument is collected
     call GetEntityTransitionCountdown             ;; 03:63BC $CD $05 $0C
     ld   a, $70                                   ;; 03:63BF $3E $70
     ld   [hl], a                                  ;; 03:63C1 $77
@@ -4693,7 +4555,6 @@ jr_003_64AD:
     call MarkRoomCompleted                        ;; 03:64AD $CD $2A $51
     ld   hl, wSmallKeysCount                      ;; 03:64B0 $21 $D0 $DB
     inc  [hl]                                     ;; 03:64B3 $34
-    jp   SynchronizeDungeonsItemFlags_trampoline  ;; 03:64B4 $C3 $02 $28
 
 PickDroppableHeart::
     ld   a, $08                                   ;; 03:64B7 $3E $08
@@ -4843,11 +4704,11 @@ include "code/entities/03_magic_rod_fireball.asm"
 ; define sprite variants by selecting tile n° and setting OAM attributes (palette + flags) in a list
 OctorokRockSpriteVariants::
 .variant0
-    db $6C, $01
-    db $6C, $21
+    db $4C, $01
+    db $4C, $21
 .variant1
-    db $5C, $01
-    db $5C, $21
+    db $4C, $01
+    db $4C, $21
 
 OctorokRockEntityHandler::
     call GetEntityTransitionCountdown             ;; 03:6A26 $CD $05 $0C
@@ -5793,6 +5654,14 @@ EnemyCollidedWithSword::
 .finalNightmareForm2Collisions
     call IncrementEntityState                     ;; 03:7001 $CD $12 $3B
     ld   [hl], $06                                ;; 03:7004 $36 $06
+
+    ; LSD TMP: Damage blob form with the sword
+    ld   hl, wEntitiesFlashCountdownTable
+    add  hl, bc
+    ld   [hl], $14
+    call IncrementEntityState
+    ld   [hl], $07
+
     ret                                           ;; 03:7006 $C9
 
 .finalNightmareForm3Collisions::
@@ -5906,7 +5775,7 @@ ENDC
 
     ld   a, [wIsRunningWithPegasusBoots]          ;; 03:7090 $FA $4A $C1
     and  a                                        ;; 03:7093 $A7
-    jr   z, .continueDefaultCollision             ;; 03:7094 $28 $6C
+    ; LSD: Slime eye split without boots. jr   z, .continueDefaultCollision             ;; 03:7094 $28 $6C
 
     ld   hl, wEntitiesPrivateCountdown2Table      ;; 03:7096 $21 $00 $C3
     add  hl, bc                                   ;; 03:7099 $09
@@ -6181,7 +6050,7 @@ label_003_71C0:
     cp   $04                                      ;; 03:71FE $FE $04
     jr   nz, .jr_7215                             ;; 03:7200 $20 $13
 
-    ld   a, [wIsRunningWithPegasusBoots]          ;; 03:7202 $FA $4A $C1
+    ld   a, 1 ; LSD TMP: Hit ganon with normal sword attacks [wIsRunningWithPegasusBoots]          ;; 03:7202 $FA $4A $C1
     push af                                       ;; 03:7205 $F5
     call func_003_6DDF                            ;; 03:7206 $CD $DF $6D
     pop  af                                       ;; 03:7209 $F1
@@ -6290,10 +6159,11 @@ jr_003_7279:
     jr   jr_003_729D                              ;; 03:7291 $18 $0A
 
 jr_003_7293:
-    ld   [hl], $2F                                ;; 03:7293 $36 $2F
-    call ConfigureNewEntity                       ;; 03:7295 $CD $5B $48
-    call GetEntitySlowTransitionCountdown         ;; 03:7298 $CD $FB $0B
-    ld   [hl], $80                                ;; 03:729B $36 $80
+    ; LSD: no fairy (and no heart) any more: the entity just vanishes in a poof.
+    ; Was: turn into ENTITY_DROPPABLE_FAIRY ($2F), used by boomeranged sparks.
+    ld   hl, wEntitiesStatusTable
+    add  hl, bc
+    ld   [hl], b ; ENTITY_STATUS_DISABLED
 
 jr_003_729D:
     ld   hl, wEntitiesPosXTable                   ;; 03:729D $21 $00 $C2

@@ -90,7 +90,11 @@ ENDC
     ld   [wMusicTrackToPlay], a                   ;; 15:50C9 $EA $68 $D3
     ld   hl, wIndoorBRoomStatus + $74             ;; 15:50CC $21 $74 $DA
     set  6, [hl]                                  ;; 15:50CF $CB $F6
-    call_open_dialog Dialog0F5                    ;; 15:50D1
+    ; LSD: no intro dialog call_open_dialog Dialog0F5 ;; 15:50D1
+    ; LSD: the sheets of the first form are not loaded yet (LSD has no per-room
+    ; sheet loading), LSD_LoadFirstFormSheets loads them during the intro.
+    xor  a
+    ld   [wLoadedEntitySpritesheets+2], a
     call GetEntityTransitionCountdown             ;; 15:50D6 $CD $05 $0C
     ld   [hl], $50                                ;; 15:50D9 $36 $50
     ldh  a, [hLinkPositionX]                      ;; 15:50DB $F0 $98
@@ -133,6 +137,7 @@ ENDC
     jp   IncrementEntityState                     ;; 15:511A $C3 $12 $3B
 
 func_015_511D::
+    call LSD_LoadFirstFormSheets
     call func_015_5631                            ;; 15:511D $CD $31 $56
     call GetEntityTransitionCountdown             ;; 15:5120 $CD $05 $0C
     jr   nz, jr_015_512D                          ;; 15:5123 $20 $08
@@ -143,6 +148,29 @@ func_015_5128::
     ld   a, JINGLE_SHADOW_MOVE                    ;; 15:5128 $3E $35
     ldh  [hJingle], a                             ;; 15:512A $E0 $F2
     ret                                           ;; 15:512C $C9
+
+; LSD: load the spritesheets of the first form into slot 2 and 3, as soon as
+; the boss sheets in slot 0 and 1 are done loading.
+LSD_LoadFirstFormSheets:
+    ld   a, [wLoadedEntitySpritesheets+2]
+    and  a
+    ret  nz
+    ldh  a, [hNeedsUpdatingEntityTilesA]
+    ld   hl, wNeedsUpdatingEntityTilesB
+    or   [hl]
+    ret  nz
+    ld   a, [FinalNightmareSpritesheetsPerForm]
+    ld   [wLoadedEntitySpritesheets+2], a
+    ld   a, [FinalNightmareSpritesheetsPerForm+1]
+    ld   [wLoadedEntitySpritesheets+3], a
+    ld   a, $02
+    ld   [wEntityTilesSpriteslotIndexA], a
+    inc  a
+    ld   [wEntityTilesSpriteslotIndexB], a
+    ld   a, TRUE
+    ldh  [hNeedsUpdatingEntityTilesA], a
+    ld   [wNeedsUpdatingEntityTilesB], a
+    ret
 
 ; Final boss music initalization???
 jr_015_512D:
@@ -3184,7 +3212,7 @@ func_015_68E7::
     ld   [hl], $00                                ;; 15:68FC $36 $00
     ld   hl, wEntitiesOptions1Table               ;; 15:68FE $21 $30 $C4
     add  hl, bc                                   ;; 15:6901 $09
-    ld   [hl], ENTITY_OPT1_IS_BOSS|ENTITY_OPT1_SWORD_CLINK_OFF ;; 15:6902 $36 $C0
+    ld   [hl], ENTITY_OPT1_IS_BOSS ; LSD TMP |ENTITY_OPT1_SWORD_CLINK_OFF ;; 15:6902 $36 $C0
     call GetEntitySlowTransitionCountdown         ;; 15:6904 $CD $FB $0B
     ld   [hl], $90                                ;; 15:6907 $36 $90
     xor  a                                        ;; 15:6909 $AF
